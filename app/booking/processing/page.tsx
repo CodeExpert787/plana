@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { CheckCircle } from "lucide-react"
 import mockActivities from "@/data/mockActivities"
 import { useTranslation } from "react-i18next";
-import "../../../../i18n-client";
+import "../../../i18n-client";
 export default function ProcessingPage() {
   const router = useRouter()
   const searchParams = useSearchParams()

@@ -11,7 +11,8 @@ import { Star, MapPin, Filter, Search, Clock, Heart, ArrowLeft, ArrowRight, Cale
 import { motion, AnimatePresence, type PanInfo } from "framer-motion"
 import Image from "next/image"
 import { ActivityDetailModal } from "@/components/activity-detail-modal"
-import mockActivities from "@/data/mockActivities"
+
+import { useLocalizedActivities } from "@/hooks/useLocalizedActivities"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslation } from "react-i18next";
 import "../../i18n-client";
@@ -115,6 +116,7 @@ function ActivitySwipeView({
     [router],
   )
   const { t } = useTranslation("pages");
+  console.log(t)
   if (remainingActivities.length === 0 || currentIndex >= remainingActivities.length) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
@@ -392,7 +394,7 @@ function ActivityGridView({
             }`}
             onClick={() => setActiveTab("all")}
           >
-            Todas
+            {t("all")}
           </button>
           <button
             className={`px-4 py-1.5 text-sm font-medium rounded-full ${
@@ -400,7 +402,7 @@ function ActivityGridView({
             }`}
             onClick={() => setActiveTab("matches")}
           >
-            Mis Matches
+            {t("myMatches")}
           </button>
         </div>
         <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setShowFilters(!showFilters)}>
@@ -572,7 +574,7 @@ export default function SearchPage() {
   const [categoryFilters, setCategoryFilters] = useState<string[]>([])
 
   const searchParams = useSearchParams()
-
+  const activitiesData = useLocalizedActivities();
   // Define Activity type
   type Activity = {
     id: number;
@@ -599,93 +601,95 @@ export default function SearchPage() {
   };
 
   // Map activities with t inside useMemo
-  const activities: Activity[] = useMemo(() =>
-    mockActivities.map((activity: any): Activity => ({
-      id: Number.parseInt(activity.id),
-      title: activity.title,
-      description: activity.description,
+// Example inside your SearchPage component:
+const activities: Activity[] = useMemo(() =>
+  activitiesData.map((activity: any): Activity => ({
+    id: Number.parseInt(activity.id),
+    title: activity.title,
+    description: activity.description,
+    color:
+      activity.category === t("skiing") || activity.category === t("skiingInvernal")
+        ? "bg-sky-500"
+        : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
+        ? "bg-emerald-500"
+        : activity.category === t("acuatic") || activity.category === t("kayak")
+        ? "bg-blue-500"
+        : activity.category === t("climbing")
+        ? "bg-amber-500"
+        : activity.category === t("fishing")
+        ? "bg-cyan-600"
+        : activity.category === t("cycling")
+        ? "bg-green-500"
+        : activity.category === t("paragliding")
+        ? "bg-purple-500"
+        : "bg-gray-500",
+    emoji:
+      activity.category === t("skiing") || activity.category === t("skiingInvernal")
+        ? "⛷️"
+        : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
+        ? "🥾"
+        : activity.category === t("acuatic") || activity.category === t("kayak")
+        ? "🚣"
+        : activity.category === t("climbing")
+        ? "🧗"
+        : activity.category === t("fishing")
+        ? "🎣"
+        : activity.category === t("cycling")
+        ? "🚵"
+        : activity.category === t("paragliding")
+        ? "🪂"
+        : "🏔️",
+    price: typeof activity.price === "number" ? activity.price : Number.parseInt(activity.price),
+    duration: activity.duration,
+    difficulty: activity.difficulty,
+    category: activity.category,
+    season: activity.season,
+    images: activity.images || [activity.image],
+    guide: {
+      name: activity.guide.name,
+      initials: activity.guide.name
+        .split(" ")
+        .map((n: string) => n[0])
+        .join(""),
+      emoji:
+        activity.category === t("skiing")
+          ? "⛷️"
+          : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
+          ? "🥾"
+          : activity.category === t("acuatic") || activity.category === t("kayak")
+          ? "🚣"
+          : activity.category === t("climbing")
+          ? "🧗"
+          : activity.category === t("fishing")
+          ? "🎣"
+          : activity.category === t("cycling")
+          ? "🚵"
+          : activity.category === t("paragliding")
+          ? "🪂"
+          : "🏔️",
       color:
         activity.category === t("skiing") || activity.category === t("skiingInvernal")
           ? "bg-sky-500"
           : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
-            ? "bg-emerald-500"
-            : activity.category === t("acuatic") || activity.category === t("kayak")
-              ? "bg-blue-500"
-              : activity.category === t("climbing")
-                ? "bg-amber-500"
-                : activity.category === t("fishing")
-                  ? "bg-cyan-600"
-                  : activity.category === t("cycling")
-                    ? "bg-green-500"
-                    : activity.category === t("paragliding")
-                      ? "bg-purple-500"
-                      : "bg-gray-500",
-      emoji:
-        activity.category === t("skiing") || activity.category === t("skiingInvernal")
-          ? "⛷️"
-          : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
-            ? "🥾"
-            : activity.category === t("acuatic") || activity.category === t("kayak")
-              ? "🚣"
-              : activity.category === t("climbing")
-                ? "🧗"
-                : activity.category === t("fishing")
-                  ? "🎣"
-                  : activity.category === t("cycling")
-                    ? "🚵"
-                    : activity.category === t("paragliding")
-                      ? "🪂"
-                      : "🏔️",
-      price: typeof activity.price === "number" ? activity.price : Number.parseInt(activity.price),
-      duration: activity.duration,
-      difficulty: activity.difficulty,
-      category: activity.category,
-      season: activity.season,
-      images: activity.images || [activity.image],
-      guide: {
-        name: activity.guide.name,
-        initials: activity.guide.name
-          .split(" ")
-          .map((n: string) => n[0])
-          .join(""),
-        emoji:
-          activity.category === t("skiing") 
-            ? "⛷️"
-            : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
-              ? "🥾"
-              : activity.category === t("acuatic") || activity.category === t("kayak")
-                ? "🚣"
-                : activity.category === t("climbing")
-                  ? "🧗"
-                  : activity.category === t("fishing")
-                    ? "🎣"
-                    : activity.category === t("cycling")
-                      ? "🚵"
-                      : activity.category === t("paragliding")
-                        ? "🪂"
-                        : "🏔️",
-        color:
-          activity.category === t("skiing") || activity.category === t("skiingInvernal")
-            ? "bg-sky-500"
-            : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
-              ? "bg-emerald-500"
-              : activity.category === t("acuatic") || activity.category === t("kayak")
-                ? "bg-blue-500"
-                : activity.category === t("climbing")
-                  ? "bg-amber-500"
-                  : activity.category === t("fishing")
-                    ? "bg-cyan-600"
-                    : activity.category === t("cycling")
-                      ? "bg-green-500"
-                      : activity.category === t("paragliding")
-                        ? "bg-purple-500"
-                        : "bg-gray-500",
-        rating: activity.rating,
-        reviews: Math.floor(Math.random() * 100) + 20,
-        verified: true,
-      },
-      tags: [activity.category, ...(activity.requirements ? activity.requirements.slice(0, 2) : [])],
-    })), [t]);
+          ? "bg-emerald-500"
+          : activity.category === t("acuatic") || activity.category === t("kayak")
+          ? "bg-blue-500"
+          : activity.category === t("climbing")
+          ? "bg-amber-500"
+          : activity.category === t("fishing")
+          ? "bg-cyan-600"
+          : activity.category === t("cycling")
+          ? "bg-green-500"
+          : activity.category === t("paragliding")
+          ? "bg-purple-500"
+          : "bg-gray-500",
+      rating: activity.rating,
+      reviews: Math.floor(Math.random() * 100) + 20,
+      verified: true,
+    },
+    tags: [activity.category, ...(activity.requirements ? activity.requirements.slice(0, 2) : [])],
+  })),
+[t, activitiesData]);
 
   // Filtrar actividades según temporada y categoría usando useMemo
   const filteredActivities = useMemo(() => {

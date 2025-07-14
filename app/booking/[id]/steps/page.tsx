@@ -8,12 +8,13 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Users, CreditCard, Check } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import mockActivities from "@/data/mockActivities"
+import { useLocalizedActivities } from "@/hooks/useLocalizedActivities"
 import PersonalInfoForm, { type PersonalInfo } from "@/components/personal-info-form"
 import { sendBookingConfirmationEmail, generateConfirmationCode, generateBookingId } from "@/lib/email-service"
 import { useTranslation } from "react-i18next"
 import "../../../../i18n-client"
 export default function BookingStepsPage({ params }: { params: { id: string } }) {
+  const id = params.id
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useTranslation("pages")
@@ -32,8 +33,8 @@ export default function BookingStepsPage({ params }: { params: { id: string } })
   const dateParam = searchParams.get("date")
   const participantsParam = searchParams.get("participants")
   const participants = participantsParam ? Number.parseInt(participantsParam) : 1
-  // Buscar la actividad
-  const activity = mockActivities.find((act) => act.id === params.id)
+
+  const activity = useLocalizedActivities().find((act) => act.id === id)
 
   if (!activity) {
     return (
@@ -51,7 +52,7 @@ export default function BookingStepsPage({ params }: { params: { id: string } })
         month: "long",
         day: "numeric",
       })
-    : "Fecha no seleccionada"
+    : t("noDateSelected")
 
   const handlePersonalInfoSubmit = async (data: PersonalInfo) => {
     setPersonalInfo(data)
@@ -80,19 +81,19 @@ export default function BookingStepsPage({ params }: { params: { id: string } })
       })
 
       // Enviar email de confirmación (do NOT send paymentInfo)
-      const emailResult = await sendBookingConfirmationEmail({
-        personalInfo,
-        activity,
-        bookingDetails: {
-          date: formattedDate,
-          participants,
-          totalPrice,
-          confirmationCode,
-          bookingId,
-        },
-      })
+      // const emailResult = await sendBookingConfirmationEmail({
+      //   personalInfo,
+      //   activity,
+      //   bookingDetails: {
+      //     date: formattedDate,
+      //     participants,
+      //     totalPrice,
+      //     confirmationCode,
+      //     bookingId,
+      //   },
+      // })
 
-      console.log("✅ Email enviado exitosamente:", emailResult)
+      // console.log("✅ Email enviado exitosamente:", emailResult)
       // Only store last 4 digits for reference
       const safePaymentInfo = {
         cardNumber: paymentInfo.cardNumber,

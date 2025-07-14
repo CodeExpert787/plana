@@ -18,7 +18,7 @@ import mockActivities from "@/data/mockActivities"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useTranslation } from "react-i18next";
-import "../../../../i18n-client";
+import "../../../i18n-client";
 export default function BookingReviewPage() {
   const router = useRouter()
   const searchParams = useSearchParams()

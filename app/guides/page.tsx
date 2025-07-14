@@ -418,7 +418,7 @@ export default function GuidesPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                 <Input
                   type="text"
-                  placeholder="Buscar guías por nombre o especialidad..."
+                  placeholder={t("searchGuidesPlaceholder")}
                   className="pl-10 pr-4 py-2 w-full"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -894,6 +894,25 @@ export default function GuidesPage() {
                             type="submit"
                             className="bg-emerald-600 hover:bg-emerald-700"
                             disabled={!termsAccepted}
+                            onClick={async () => {
+                              try {
+                                await fetch("/api/notify-admin", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ formData }),
+                                });
+                                await fetch("/api/add-mock-activity", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ formData }),
+                                });
+                              } catch (e) {
+                                console.error("Error notifying admin or saving activity:", e);
+                              }
+                              console.log(formData);
+                              
+                            // Do NOT reset formData here, so summary remains
+                          }}
                           >
                             {t("acceptAndFinish")}
                           </Button>
@@ -940,26 +959,10 @@ export default function GuidesPage() {
                   </CardContent>
                 </Card>
                 <Button
-                   onClick={async () => {
-                      try {
-                        await fetch("/api/notify-admin", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ formData }),
-                        });
-                        await fetch("/api/add-mock-activity", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ formData }),
-                        });
-                      } catch (e) {
-                        console.error("Error notifying admin or saving activity:", e);
-                      }
-                      console.log(formData);
-                      setFormSubmitted(false)
-                      setFormStep(1)
-                      setActiveTab("browse")
-                    // Do NOT reset formData here, so summary remains
+                  onClick={() => {
+                    setFormSubmitted(false)
+                    setFormStep(1)
+                    setActiveTab("browse")
                   }}
                   className="bg-emerald-600 hover:bg-emerald-700"
                 >

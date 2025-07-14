@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     const newFileContent = fileContent.substring(0, arrayStart) + newArrText + fileContent.substring(arrayEnd + 1);
     fs.writeFileSync(mockPath, newFileContent, "utf-8");
     // --- End save ---
-
+    console.log("New activity saved:", newActivity);
     return NextResponse.json({ success: true, newActivity });
   } catch (error) {
     console.error("Error saving activity to mockActivities.ts:", error);

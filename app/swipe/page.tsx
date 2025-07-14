@@ -6,7 +6,7 @@ import ActivityDetailModal from "@/components/ActivityDetailModal"
 import mockActivities from "@/data/mockActivities"
 import Image from "next/image"
 import { useTranslation } from "react-i18next";
-import "../../../i18n-client";
+import "../../i18n-client";
 
 export default function SwipePage() {
   const router = useRouter()

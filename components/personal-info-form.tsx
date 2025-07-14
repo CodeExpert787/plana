@@ -6,7 +6,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { User, Mail, Phone, MapPin, UserCheck } from "lucide-react"
-
+import { useTranslation } from "react-i18next"
+import "../i18n-client"
 export interface PersonalInfo {
   firstName: string
   lastName: string
@@ -25,6 +26,7 @@ interface PersonalInfoFormProps {
 }
 
 export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
+  const { t } = useTranslation("pages")
   const [formData, setFormData] = useState<PersonalInfo>({
     firstName: "",
     lastName: "",
@@ -95,7 +97,7 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <User className="w-5 h-5" />
-          Información Personal
+          {t("personalInfo")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -103,24 +105,24 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
           {/* Información Personal */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Nombre *</label>
+              <label className="block text-sm font-medium mb-2">{t("name")} *</label>
               <input
                 type="text"
                 value={formData.firstName}
                 onChange={(e) => handleInputChange("firstName", e.target.value)}
                 className={`w-full p-3 border rounded-lg ${errors.firstName ? "border-red-500" : "border-gray-300"}`}
-                placeholder="Tu nombre"
+                placeholder={t("yourName")}
               />
               {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Apellido *</label>
+              <label className="block text-sm font-medium mb-2">{t("lastName")} *</label>
               <input
                 type="text"
                 value={formData.lastName}
                 onChange={(e) => handleInputChange("lastName", e.target.value)}
                 className={`w-full p-3 border rounded-lg ${errors.lastName ? "border-red-500" : "border-gray-300"}`}
-                placeholder="Tu apellido"
+                placeholder={t("yourLastName")}
               />
               {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
             </div>
@@ -129,14 +131,14 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
           <div>
             <label className="block text-sm font-medium mb-2 flex items-center gap-2">
               <Mail className="w-4 h-4" />
-              Email *
+              {t("email")} *
             </label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
               className={`w-full p-3 border rounded-lg ${errors.email ? "border-red-500" : "border-gray-300"}`}
-              placeholder="tu@email.com"
+              placeholder={t("yourEmail")}
             />
             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
@@ -144,7 +146,7 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
           <div>
             <label className="block text-sm font-medium mb-2 flex items-center gap-2">
               <Phone className="w-4 h-4" />
-              Teléfono *
+              {t("phone")} *
             </label>
             <input
               type="tel"
@@ -159,14 +161,14 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
           <div>
             <label className="block text-sm font-medium mb-2 flex items-center gap-2">
               <MapPin className="w-4 h-4" />
-              Dirección *
+              {t("address")} *
             </label>
             <input
               type="text"
               value={formData.address}
               onChange={(e) => handleInputChange("address", e.target.value)}
               className={`w-full p-3 border rounded-lg ${errors.address ? "border-red-500" : "border-gray-300"}`}
-              placeholder="Tu dirección completa"
+              placeholder={t("yourAddress")}
             />
             {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
           </div>
@@ -175,12 +177,12 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
           <div className="border-t pt-4 mt-6">
             <h3 className="font-medium mb-4 flex items-center gap-2">
               <UserCheck className="w-4 h-4" />
-              Contacto de Emergencia
+              {t("emergencyContact")}
             </h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Nombre completo *</label>
+                <label className="block text-sm font-medium mb-2">{t("fullName")} *</label>
                 <input
                   type="text"
                   value={formData.emergencyContact.name}
@@ -188,13 +190,13 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
                   className={`w-full p-3 border rounded-lg ${
                     errors.emergencyName ? "border-red-500" : "border-gray-300"
                   }`}
-                  placeholder="Nombre del contacto de emergencia"
+                  placeholder={t("emergencyContactName")}
                 />
                 {errors.emergencyName && <p className="text-red-500 text-sm mt-1">{errors.emergencyName}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Teléfono *</label>
+                <label className="block text-sm font-medium mb-2">{t("phone")} *</label>
                 <input
                   type="tel"
                   value={formData.emergencyContact.phone}
@@ -202,13 +204,13 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
                   className={`w-full p-3 border rounded-lg ${
                     errors.emergencyPhone ? "border-red-500" : "border-gray-300"
                   }`}
-                  placeholder="+54 9 11 1234-5678"
+                  placeholder={t("emergencyContactPhone")}
                 />
                 {errors.emergencyPhone && <p className="text-red-500 text-sm mt-1">{errors.emergencyPhone}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Relación *</label>
+                <label className="block text-sm font-medium mb-2">{t("relationship")} *</label>
                 <select
                   value={formData.emergencyContact.relationship}
                   onChange={(e) => handleInputChange("emergency.relationship", e.target.value)}
@@ -216,13 +218,13 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
                     errors.emergencyRelationship ? "border-red-500" : "border-gray-300"
                   }`}
                 >
-                  <option value="">Selecciona la relación</option>
-                  <option value="padre">Padre</option>
-                  <option value="madre">Madre</option>
-                  <option value="hermano">Hermano/a</option>
-                  <option value="pareja">Pareja</option>
-                  <option value="amigo">Amigo/a</option>
-                  <option value="otro">Otro</option>
+                  <option value="">{t("selectRelationship")}</option>
+                  <option value="padre">{t("father")}</option>
+                  <option value="madre">{t("mother")}</option>
+                  <option value="hermano">{t("brother")}</option>
+                  <option value="pareja">{t("partner")}</option>
+                  <option value="amigo">{t("friend")}</option>
+                  <option value="otro">{t("other")}</option>
                 </select>
                 {errors.emergencyRelationship && (
                   <p className="text-red-500 text-sm mt-1">{errors.emergencyRelationship}</p>
@@ -232,7 +234,7 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
           </div>
 
           <Button type="submit" className="w-full mt-6">
-            Continuar al Pago
+            {t("continueToPayment")}
           </Button>
         </form>
       </CardContent>
