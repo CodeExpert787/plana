@@ -24,11 +24,11 @@ export default function LanguageNav() {
   }, [lang]);
 
   return (
-    <nav className="flex items-center justify-between bg-white/80 shadow-sm rounded-lg px-4 py-2 mb-4 border border-gray-100">
-      <Link href="/admin/email-dashboard" className="text-sm font-medium hover:text-primary transition-colors">
+    <nav className="flex items-center justify-end bg-white/80 shadow-sm rounded-lg px-4 py-2 mb-4 border border-gray-100">
+      {/* <Link href="/admin/email-dashboard" className="text-sm font-medium hover:text-primary transition-colors">
         {t("admin_email")}
-      </Link>
-      <div className="flex items-center gap-2">
+      </Link> */}
+      <div className="flex items-center  gap-2">
         <Globe className="w-5 h-5 text-gray-500 mr-1" />
         {/* Only show English button if not already in English */}
         {i18n.language !== "en" && (
