@@ -931,7 +931,7 @@ export default function GuidesPage() {
                 <p className="text-gray-600 mb-6">
                   {t("requestSentDescription")}
                 </p>
-                <Card className="mb-6">
+                {/* <Card className="mb-6">
                   <CardContent className="p-4">
                     <h3 className="font-semibold mb-2">{t("nextSteps")}</h3>
                     <ul className="space-y-3 text-left">
@@ -957,7 +957,7 @@ export default function GuidesPage() {
                       </li>
                     </ul>
                   </CardContent>
-                </Card>
+                </Card> */}
                 <Button
                   onClick={() => {
                     setFormSubmitted(false)

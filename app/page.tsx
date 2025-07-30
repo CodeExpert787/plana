@@ -125,17 +125,17 @@ export default function HomePage() {
     params.append("people", people.toString())
 
     // Añadir temporada
-    params.append("season", season === "winter" ? t("winter") : t("summer"))
+    params.append("season", season === "winter" ? "invierno" : "verano")
 
     // Añadir categorías seleccionadas
     const selectedCategories = []
-    if (trekking) selectedCategories.push(t("trekking"))
-    if (escalada) selectedCategories.push(t("climbing"))
-    if (esqui) selectedCategories.push(t("skiing"))
-    if (bicicleta) selectedCategories.push(t("cycling"))
-    if (kayak) selectedCategories.push(t("kayak"))
-    if (pesca) selectedCategories.push(t("fishing"))
-    if (parapente) selectedCategories.push(t("paragliding"))
+    if (trekking) selectedCategories.push("Trekking")
+    if (escalada) selectedCategories.push("Escalada")
+    if (esqui) selectedCategories.push("Esquí")
+    if (bicicleta) selectedCategories.push("Ciclismo")
+    if (kayak) selectedCategories.push("Acuático")
+    if (pesca) selectedCategories.push("Pesca")
+    if (parapente) selectedCategories.push("Aventura Aérea")
 
     if (selectedCategories.length > 0) {
       params.append("categories", selectedCategories.join(","))
@@ -147,6 +147,7 @@ export default function HomePage() {
 
     return `/search?${params.toString()}`
   }
+
 
   return (
     <main className="flex flex-col min-h-screen">
@@ -173,7 +174,7 @@ export default function HomePage() {
                 {t("heroSubtitle", "Live unique experiences with certified local guides")}
               </p>
               <div className="mt-6">
-                <Link href={buildSearchUrl("swipe")}> 
+                <Link href={buildSearchUrl("grid")}> 
                   <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
                     {t("exploreActivities", "Explore activities")}
                   </Button>
