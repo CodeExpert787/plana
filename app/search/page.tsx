@@ -109,9 +109,9 @@ function ActivitySwipeView({
   }, [])
 
   const handleBookNow = useCallback(
-    (e: React.MouseEvent, activityId: number) => {
+    (e: React.MouseEvent, activityId: string | number) => {
       e.stopPropagation() // Evitar que el evento se propague al contenedor y active el swipe
-      router.push(`/booking/${activityId}/steps`)
+      router.push(`/activity-detail?id=${activityId}`)
     },
     [router],
   )
@@ -250,31 +250,31 @@ function ActivitySwipeView({
                   </Badge>
                 </div>
 
-                <div className="flex flex-wrap gap-2 mb-3">
+                {/* <div className="flex flex-wrap gap-2 mb-3">
                   {currentActivity.tags.map((tag: string, index: number) => (
                     <Badge key={index} variant="outline" className="text-white border-white/50">
                       {tag}
                     </Badge>
                   ))}
-                </div>
+                </div> */}
 
-                <div className="flex items-center mb-3 text-white/90">
+                {/* <div className="flex items-center mb-3 text-white/90">
                   <MapPin className="w-4 h-4 mr-1" />
                   <span>Bariloche, Argentina</span>
-                </div>
+                </div> */}
 
                 <p className="mb-3 text-white/90">{currentActivity.description}</p>
 
-                <div className="flex items-center justify-between text-sm">
+                {/* <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center">
                     <span className="mr-4">
-                      <span className="font-semibold">Duración:</span> {currentActivity.duration}
+                      <span className="font-semibold"> {t("duration")}:</span> {currentActivity.duration}
                     </span>
                     <span>
-                      <span className="font-semibold">Dificultad:</span> {currentActivity.difficulty}
+                      <span className="font-semibold"> {t("difficulty")}:</span> {currentActivity.difficulty}
                     </span>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Botón de Reserva */}
                 <Button
@@ -282,7 +282,7 @@ function ActivitySwipeView({
                   onClick={(e) => handleBookNow(e, currentActivity.id)}
                 >
                   <Calendar className="w-4 h-4" />
-                  Reservar ahora
+                   {t("moreInformation")}
                 </Button>
 
                 <div className="flex items-center mt-4 pt-4 border-t border-white/20">
@@ -295,14 +295,14 @@ function ActivitySwipeView({
                     <div className="flex items-center">
                       <p className="font-medium">{currentActivity.guide.name}</p>
                       {currentActivity.guide.verified && (
-                        <Badge className="ml-2 bg-blue-500 hover:bg-blue-600 text-xs">Verificado</Badge>
+                        <Badge className="ml-2 bg-blue-500 hover:bg-blue-600 text-xs">{t("verified")}</Badge>
                       )}
                     </div>
                     <div className="flex items-center text-sm">
                       <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
                       <span>{currentActivity.guide.rating}</span>
                       <span className="mx-1">•</span>
-                      <span>{currentActivity.guide.reviews} reseñas</span>
+                      <span>{currentActivity.guide.reviews} {t("reviews")}</span>
                     </div>
                   </div>
                 </div>
@@ -467,7 +467,7 @@ function ActivityGridView({
 
       {/* Mostrar mensaje cuando no hay matches */}
       {activeTab === "matches" && filteredActivities.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+        <div className="flex flex-col items-center justify-center h-[60vh] text-center ">
           <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
             <Heart className="w-8 h-8 text-emerald-600" />
           </div>
@@ -480,14 +480,14 @@ function ActivityGridView({
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {filteredActivities.map((activity: any) => (
             <div
               key={activity.id}
               className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => onActivityClick(activity)}
             >
-              <div className={`h-40 ${activity.color} relative`}>
+              <div className={`aspect-[3/4] ${activity.color} relative`}>
                 {activity.images && activity.images.length > 0 ? (
                   <Image
                     src={activity.images[0] || "/placeholder.svg"}
@@ -572,6 +572,9 @@ export default function SearchPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [seasonFilter, setSeasonFilter] = useState<"all" | "invierno" | "verano">("all")
   const [categoryFilters, setCategoryFilters] = useState<string[]>([])
+  const [people, setPeople] = useState<number>(1)
+  const [locationId, setLocationId] = useState<number | null>(null)
+  const [locationName, setLocationName] = useState<string>("")
 
   const searchParams = useSearchParams()
   const activitiesData = useLocalizedActivities();
@@ -586,8 +589,11 @@ export default function SearchPage() {
     duration: string;
     difficulty: string;
     category: string;
+    categoryKey: string; // Internal category key for consistent filtering
     season: string;
+    seasonKey: string; // Internal season key for consistent filtering
     images: string[];
+    locationId?: number; // Optional location ID for filtering
     guide: {
       name: string;
       initials: string;
@@ -600,132 +606,253 @@ export default function SearchPage() {
     tags: string[];
   };
 
+  // Category mapping for consistent filtering across languages
+  const categoryMapping: Record<string, string> = {
+    // Spanish categories -> internal keys
+    "Trekking": "trekking",
+    "Trekking Invernal": "trekking", 
+    "Escalada": "climbing",
+    "Esquí": "skiing",
+    "Esquí Invernal": "skiing",
+    "Kayak": "kayak",
+    "Acuático": "kayak",
+    "Pesca": "fishing",
+    "Bicicleta": "cycling",
+    "Parapente": "paragliding",
+    "Aventura Aérea": "paragliding",
+    "Cabalgata": "horseback",
+    "Fotografía": "photography",
+    "Camping": "camping",
+    "Navegación": "navigation",
+    "Observación de aves": "birdwatching",
+    
+    // English categories -> internal keys
+    "Winter Trekking": "trekking",
+    "Climbing": "climbing", 
+    "Skiing": "skiing",
+    "Fishing": "fishing",
+    "Cycling": "cycling",
+    "Paragliding": "paragliding",
+    "Aerial Adventure": "paragliding",
+    "Horseback riding": "horseback",
+    "Photography": "photography",
+    "Navigation": "navigation",
+    "Birdwatching": "birdwatching",
+  };
+
+  // Season mapping for consistent filtering across languages
+  const seasonMapping: Record<string, string> = {
+    // Spanish seasons -> internal keys
+    "invierno": "winter",
+    "verano": "summer",
+    "otoño": "autumn",
+    "primavera": "spring",
+    
+    // English seasons -> internal keys
+    "winter": "winter",
+    "summer": "summer", 
+    "autumn": "autumn",
+    "spring": "spring",
+  };
+
   // Map activities with t inside useMemo
 // Example inside your SearchPage component:
 const activities: Activity[] = useMemo(() =>
-  activitiesData.map((activity: any): Activity => ({
-    id: Number.parseInt(activity.id),
-    title: activity.title,
-    description: activity.description,
-    color:
-      activity.category === t("skiing") || activity.category === t("skiingInvernal")
-        ? "bg-sky-500"
-        : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
-        ? "bg-emerald-500"
-        : activity.category === t("acuatic") || activity.category === t("kayak")
-        ? "bg-blue-500"
-        : activity.category === t("climbing")
-        ? "bg-amber-500"
-        : activity.category === t("fishing")
-        ? "bg-cyan-600"
-        : activity.category === t("cycling")
-        ? "bg-green-500"
-        : activity.category === t("paragliding")
-        ? "bg-purple-500"
-        : "bg-gray-500",
-    emoji:
-      activity.category === t("skiing") || activity.category === t("skiingInvernal")
-        ? "⛷️"
-        : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
-        ? "🥾"
-        : activity.category === t("acuatic") || activity.category === t("kayak")
-        ? "🚣"
-        : activity.category === t("climbing")
-        ? "🧗"
-        : activity.category === t("fishing")
-        ? "🎣"
-        : activity.category === t("cycling")
-        ? "🚵"
-        : activity.category === t("paragliding")
-        ? "🪂"
-        : "🏔️",
-    price: typeof activity.price === "number" ? activity.price : Number.parseInt(activity.price),
-    duration: activity.duration,
-    difficulty: activity.difficulty,
-    category: activity.category,
-    season: activity.season,
-    images: activity.images || [activity.image],
-    guide: {
-      name: activity.guide.name,
-      initials: activity.guide.name
-        .split(" ")
-        .map((n: string) => n[0])
-        .join(""),
-      emoji:
-        activity.category === t("skiing")
-          ? "⛷️"
-          : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
-          ? "🥾"
-          : activity.category === t("acuatic") || activity.category === t("kayak")
-          ? "🚣"
-          : activity.category === t("climbing")
-          ? "🧗"
-          : activity.category === t("fishing")
-          ? "🎣"
-          : activity.category === t("cycling")
-          ? "🚵"
-          : activity.category === t("paragliding")
-          ? "🪂"
-          : "🏔️",
+  activitiesData.map((activity: any): Activity => {
+    // Get the internal category key for consistent filtering
+    const categoryKey = categoryMapping[activity.category] || "other";
+    // Get the internal season key for consistent filtering
+    const seasonKey = seasonMapping[activity.season] || "other";
+    
+    return {
+      id: Number.parseInt(activity.id),
+      title: activity.title,
+      description: activity.description,
       color:
-        activity.category === t("skiing") || activity.category === t("skiingInvernal")
+        categoryKey === "skiing"
           ? "bg-sky-500"
-          : activity.category === t("trekking") || activity.category === t("trekkingInvernal")
+          : categoryKey === "trekking"
           ? "bg-emerald-500"
-          : activity.category === t("acuatic") || activity.category === t("kayak")
+          : categoryKey === "kayak"
           ? "bg-blue-500"
-          : activity.category === t("climbing")
+          : categoryKey === "climbing"
           ? "bg-amber-500"
-          : activity.category === t("fishing")
+          : categoryKey === "fishing"
           ? "bg-cyan-600"
-          : activity.category === t("cycling")
+          : categoryKey === "cycling"
           ? "bg-green-500"
-          : activity.category === t("paragliding")
+          : categoryKey === "paragliding"
           ? "bg-purple-500"
           : "bg-gray-500",
-      rating: activity.rating,
-      reviews: Math.floor(Math.random() * 100) + 20,
-      verified: true,
-    },
-    tags: [activity.category, ...(activity.requirements ? activity.requirements.slice(0, 2) : [])],
-  })),
-[t, activitiesData]);
+      emoji:
+        categoryKey === "skiing"
+          ? "⛷️"
+          : categoryKey === "trekking"
+          ? "🥾"
+          : categoryKey === "kayak"
+          ? "🚣"
+          : categoryKey === "climbing"
+          ? "🧗"
+          : categoryKey === "fishing"
+          ? "🎣"
+          : categoryKey === "cycling"
+          ? "🚵"
+          : categoryKey === "paragliding"
+          ? "🪂"
+          : "🏔️",
+      price: typeof activity.price === "number" ? activity.price : Number.parseInt(activity.price),
+      duration: activity.duration,
+      difficulty: activity.difficulty,
+      category: activity.category,
+      categoryKey: categoryKey,
+      season: activity.season,
+      seasonKey: seasonKey,
+      images: activity.images || [activity.image],
+      guide: {
+        name: activity.guide.name,
+        initials: activity.guide.name
+          .split(" ")
+          .map((n: string) => n[0])
+          .join(""),
+        emoji:
+          categoryKey === "skiing"
+            ? "⛷️"
+            : categoryKey === "trekking"
+            ? "🥾"
+            : categoryKey === "kayak"
+            ? "🚣"
+            : categoryKey === "climbing"
+            ? "🧗"
+            : categoryKey === "fishing"
+            ? "🎣"
+            : categoryKey === "cycling"
+            ? "🚵"
+            : categoryKey === "paragliding"
+            ? "🪂"
+            : "🏔️",
+        color:
+          categoryKey === "skiing"
+            ? "bg-sky-500"
+            : categoryKey === "trekking"
+            ? "bg-emerald-500"
+            : categoryKey === "kayak"
+            ? "bg-blue-500"
+            : categoryKey === "climbing"
+            ? "bg-amber-500"
+            : categoryKey === "fishing"
+            ? "bg-cyan-600"
+            : categoryKey === "cycling"
+            ? "bg-green-500"
+            : categoryKey === "paragliding"
+            ? "bg-purple-500"
+            : "bg-gray-500",
+        rating: activity.rating,
+        reviews: Math.floor(Math.random() * 100) + 20,
+        verified: true,
+      },
+      tags: [activity.category, ...(activity.requirements ? activity.requirements.slice(0, 2) : [])],
+    };
+  }),
+[activitiesData]);
 
   // Filtrar actividades según temporada y categoría usando useMemo
   const filteredActivities = useMemo(() => {
     return activities.filter((activity: Activity) => {
-      // Filtro de temporada
-      if (seasonFilter !== "all" && activity.season !== seasonFilter) {
+      // Filtro de temporada - use seasonKey for consistent filtering
+      if (seasonFilter !== "all") {
+        const seasonKey = seasonMapping[seasonFilter] || seasonFilter
+        if (activity.seasonKey !== seasonKey) {
+          return false
+        }
+      }
+
+      // Filtro de categoría - use categoryKey for consistent filtering
+      if (categoryFilters.length > 0 && !categoryFilters.includes(activity.categoryKey)) {
         return false
       }
 
-      // Filtro de categoría
-      if (categoryFilters.length > 0 && !categoryFilters.includes(activity.category)) {
+      // Filtro de ubicación (si tienes locationId en las actividades)
+      if (locationId && activity.locationId && activity.locationId !== locationId) {
         return false
       }
 
       return true
     })
-  }, [activities, seasonFilter, categoryFilters])
+  }, [activities, seasonFilter, categoryFilters, locationId])
 
   // Detectar el parámetro de URL para establecer la vista inicial y obtener la fecha
   useEffect(() => {
     const viewParam = searchParams.get("view")
     const dateParam = searchParams.get("date")
     const seasonParam = searchParams.get("season")
+    const peopleParam = searchParams.get("people")
+    const categoriesParam = searchParams.get("categories")
+    const locationParam = searchParams.get("location")
+    const locationNameParam = searchParams.get("locationName")
 
+    // Handle view mode
     if (viewParam === "swipe") {
       setViewMode("swipe")
     }
 
+    // Handle date
     if (dateParam) {
       setSelectedDate(new Date(dateParam))
     }
 
-    if (seasonParam === t("winter") || seasonParam === t("summer")) {
-      setSeasonFilter(seasonParam as "all" | "invierno" | "verano")
+    // Handle season - map to internal keys for consistent filtering
+    if (seasonParam) {
+      const seasonKey = seasonMapping[seasonParam] || seasonParam
+      // Map internal key back to display value for state
+      const displaySeason = Object.keys(seasonMapping).find(key => seasonMapping[key] === seasonKey) || seasonParam
+      
+      // Map English season names to Spanish for state consistency
+      if (displaySeason === "winter") {
+        setSeasonFilter("invierno")
+      } else if (displaySeason === "summer") {
+        setSeasonFilter("verano")
+      } else if (displaySeason === "invierno" || displaySeason === "verano") {
+        setSeasonFilter(displaySeason as "all" | "invierno" | "verano")
+      }
     }
-  }, []) // Remove searchParams dependency to avoid infinite loop
+
+    // Handle people count
+    if (peopleParam) {
+      const peopleCount = parseInt(peopleParam, 10)
+      if (!isNaN(peopleCount) && peopleCount > 0) {
+        setPeople(peopleCount)
+      }
+    }
+
+    // Handle categories (parse comma-separated values and map to internal keys)
+    if (categoriesParam) {
+      const categories = decodeURIComponent(categoriesParam).split(',').map(cat => cat.trim())
+      // Map translated category names to internal keys
+      const mappedCategories = categories.map(cat => {
+        // First try direct mapping
+        if (categoryMapping[cat]) {
+          return categoryMapping[cat]
+        }
+        // Then try reverse mapping (internal key -> internal key)
+        const reverseMapping = Object.entries(categoryMapping).find(([_, key]) => key === cat)
+        return reverseMapping ? reverseMapping[1] : cat
+      }).filter(Boolean)
+      setCategoryFilters(mappedCategories)
+    }
+
+    // Handle location
+    if (locationParam) {
+      const location = parseInt(locationParam, 10)
+      if (!isNaN(location)) {
+        setLocationId(location)
+      }
+    }
+
+    // Handle location name
+    if (locationNameParam) {
+      setLocationName(decodeURIComponent(locationNameParam))
+    }
+  }, [searchParams]) // Add searchParams as dependency
 
   // Cargar actividades likeadas desde localStorage al iniciar
   useEffect(() => {
@@ -758,11 +885,13 @@ const activities: Activity[] = useMemo(() =>
 
   // Manejar cambio de filtro de categoría
   const handleCategoryFilterChange = useCallback((category: string) => {
+    // Convert display category to internal key
+    const categoryKey = categoryMapping[category] || category
     setCategoryFilters((prev) => {
-      if (prev.includes(category)) {
-        return prev.filter((cat) => cat !== category)
+      if (prev.includes(categoryKey)) {
+        return prev.filter((cat) => cat !== categoryKey)
       } else {
-        return [...prev, category]
+        return [...prev, categoryKey]
       }
     })
   }, [])
@@ -771,25 +900,28 @@ const activities: Activity[] = useMemo(() =>
   const clearAllFilters = useCallback(() => {
     setSeasonFilter("all")
     setCategoryFilters([])
+    setPeople(1)
+    setLocationId(null)
+    setLocationName("")
+    setSelectedDate(undefined)
   }, [])
 
   // Obtener categorías únicas para los filtros usando useMemo
   const uniqueCategories = useMemo(() => {
-    return Array.from(new Set(activities.map((activity: Activity) => activity.category)))
+    // Get unique category keys and map them to display names
+    const categoryKeys = Array.from(new Set(activities.map((activity: Activity) => activity.categoryKey)))
+    return categoryKeys.map(key => {
+      // Find the first activity with this categoryKey to get the display name
+      const activity = activities.find(a => a.categoryKey === key)
+      return activity ? activity.category : key
+    })
   }, [activities])
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-emerald-50 to-sky-50">
       <header className="flex items-center justify-between p-4 border-b bg-white">
         <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/images/plan-a-logo-binoculars.png"
-            alt="PLAN A"
-            width={32}
-            height={32}
-            className="object-contain"
-          />
-          <h1 className="text-xl font-bold text-cyan-900">PLAN A</h1>
+        <img src="/images/plan-a-logo-binoculars.png" alt="PLAN A Logo" className="h-8 w-auto" />
         </Link>
         <div className="flex items-center gap-3">
           <Button onClick={toggleViewMode} variant="outline" className="flex items-center gap-1">
@@ -811,7 +943,7 @@ const activities: Activity[] = useMemo(() =>
       <div className="p-4 flex-1">
         {/* Filtros de temporada */}
         <div className="mb-4">
-          <div className="flex gap-2 overflow-x-auto pb-2">
+          <div className="flex justify-center gap-2 overflow-x-auto pb-2">
             <Button
               variant={seasonFilter === "all" ? "default" : "outline"}
               size="sm"
@@ -821,63 +953,106 @@ const activities: Activity[] = useMemo(() =>
               {t("All Seasons")}
             </Button>
             <Button
-              variant={seasonFilter === t("winter") ? "default" : "outline"}
+              variant={seasonFilter === "invierno" ? "default" : "outline"}
               size="sm"
               onClick={() => handleSeasonFilterChange("invierno")}
-              className={seasonFilter === t("winter") ? "bg-sky-600 hover:bg-sky-700" : ""}
+              className={seasonFilter === "invierno" ? "bg-sky-600 hover:bg-sky-700" : ""}
             >
               {t("Winter")}
             </Button>
             <Button
-              variant={seasonFilter === t("summer") ? "default" : "outline"}
+              variant={seasonFilter === "verano" ? "default" : "outline"}
               size="sm"
               onClick={() => handleSeasonFilterChange("verano")}
-              className={seasonFilter === t("summer") ? "bg-amber-600 hover:bg-amber-700" : ""}
+              className={seasonFilter === "verano" ? "bg-amber-600 hover:bg-amber-700" : ""}
             >
               {t("Summer")}
             </Button>
           </div>
 
           {/* Filtros de categoría */}
-          <div className="flex flex-wrap gap-2 mt-2">
-            {uniqueCategories.map((category: string) => (
-              <Badge
-                key={category}
-                className={`cursor-pointer ${
-                  categoryFilters.includes(category)
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-                onClick={() => handleCategoryFilterChange(category)}
-              >
-                {category}
-              </Badge>
-            ))}
+          <div className="flex justify-center flex-wrap gap-2 mt-2">
+            {uniqueCategories.map((category: string) => {
+              // Get the category key for this display name
+              const categoryKey = categoryMapping[category] || category
+              return (
+                <Badge
+                  key={category}
+                  className={`cursor-pointer ${
+                    categoryFilters.includes(categoryKey)
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                  onClick={() => handleCategoryFilterChange(category)}
+                >
+                  {category}
+                </Badge>
+              )
+            })}
           </div>
 
           {/* Mostrar filtros activos */}
-          {(seasonFilter !== "all" || categoryFilters.length > 0) && (
+          {/* {(seasonFilter !== "all" || categoryFilters.length > 0) && (
             <div className="flex items-center mt-3">
               <span className="text-sm text-gray-500 mr-2">Filtros activos:</span>
               <div className="flex flex-wrap gap-1">
                 {seasonFilter !== "all" && (
                   <Badge variant="outline" className="flex items-center gap-1 bg-gray-100">
-                    {seasonFilter === "invierno" ? "Invierno" : "Verano"}
+                    {seasonFilter === "invierno" ? t("Winter") : seasonFilter === "verano" ? t("Summer") : seasonFilter}
                     <X size={14} className="cursor-pointer" onClick={() => setSeasonFilter("all")} />
                   </Badge>
                 )}
-                {categoryFilters.map((category: string) => (
-                  <Badge key={category} variant="outline" className="flex items-center gap-1 bg-gray-100">
-                    {category}
-                    <X size={14} className="cursor-pointer" onClick={() => handleCategoryFilterChange(category)} />
-                  </Badge>
-                ))}
+                {categoryFilters.map((categoryKey: string) => {
+                  // Find the display name for this category key
+                  const activity = activities.find(a => a.categoryKey === categoryKey)
+                  const displayName = activity ? activity.category : categoryKey
+                  return (
+                    <Badge key={categoryKey} variant="outline" className="flex items-center gap-1 bg-gray-100">
+                      {displayName}
+                      <X size={14} className="cursor-pointer" onClick={() => handleCategoryFilterChange(displayName)} />
+                    </Badge>
+                  )
+                })}
                 <Button variant="ghost" size="sm" className="h-6 text-xs text-gray-500" onClick={clearAllFilters}>
                   Limpiar todos
                 </Button>
               </div>
             </div>
-          )}
+          )} */}
+
+          {/* Mostrar parámetros de URL aplicados */}
+          {/* {(people > 1 || locationName || selectedDate) && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <h3 className="text-sm font-medium text-blue-900 mb-2 flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Parámetros de búsqueda:
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {people > 1 && (
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                    👥 {people} personas
+                  </Badge>
+                )}
+                {locationName && (
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                    📍 {locationName}
+                  </Badge>
+                )}
+                {selectedDate && (
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                    📅 {selectedDate.toLocaleDateString('es-ES', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )} */}
         </div>
 
         {viewMode === "grid" ? (
@@ -914,7 +1089,7 @@ const activities: Activity[] = useMemo(() =>
           </svg>
           <span className="text-xs mt-1">{t("home")}</span>
         </Link>
-        <Link href="/search" className="flex flex-col items-center text-emerald-600">
+        <Link href="/filters" className="flex flex-col items-center text-emerald-600">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"

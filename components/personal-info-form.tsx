@@ -158,7 +158,7 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
             {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
           </div>
 
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium mb-2 flex items-center gap-2">
               <MapPin className="w-4 h-4" />
               {t("address")} *
@@ -171,10 +171,10 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
               placeholder={t("yourAddress")}
             />
             {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
-          </div>
+          </div> */}
 
           {/* Contacto de Emergencia */}
-          <div className="border-t pt-4 mt-6">
+          {/* <div className="border-t pt-4 mt-6">
             <h3 className="font-medium mb-4 flex items-center gap-2">
               <UserCheck className="w-4 h-4" />
               {t("emergencyContact")}
@@ -231,7 +231,7 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
                 )}
               </div>
             </div>
-          </div>
+          </div> */}
 
           <Button type="submit" className="w-full mt-6">
             {t("continueToPayment")}

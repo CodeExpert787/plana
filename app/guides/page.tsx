@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,146 +15,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useTranslation } from "react-i18next";
+import { ReviewSection } from "@/components/review-section"
+import { GuideService, Guide } from "@/lib/guide-service";
 import "../../i18n-client";
-
-
-
-// Modificar los datos de los guías para incluir emojis representativos
-const initialGuides = [
-  {
-    id: 1,
-    name: "Carlos Montaña",
-    initials: "CM",
-    emoji: "🏔️",
-    color: "bg-blue-500",
-    rating: 4.8,
-    reviews: 124,
-    verified: true,
-    location: "Bariloche, Centro",
-    specialties: ["Trekking", "Escalada", "Montañismo"],
-    experience: "10+ años",
-    description:
-      "Guía de montaña certificado con experiencia en los Andes Patagónicos. Especializado en trekking, escalada y montañismo.",
-    certifications: ["Guía AAGM", "Primeros Auxilios WFR"],
-    activities: 8,
-  },
-  {
-    id: 2,
-    name: "Laura Ríos",
-    initials: "LR",
-    emoji: "🚣",
-    color: "bg-purple-500",
-    rating: 4.9,
-    reviews: 87,
-    verified: true,
-    location: "Bariloche, Llao Llao",
-    specialties: ["Kayak", "Rafting", "Pesca"],
-    experience: "8 años",
-    description: "Especialista en actividades acuáticas. Instructora de kayak y guía de pesca con mosca certificada.",
-    certifications: ["Instructora Kayak", "Guía de Pesca"],
-    activities: 5,
-  },
-  {
-    id: 3,
-    name: "Martín Escalante",
-    initials: "ME",
-    emoji: "🧗",
-    color: "bg-green-500",
-    rating: 4.7,
-    reviews: 56,
-    verified: true,
-    location: "Bariloche, Catedral",
-    specialties: ["Escalada", "Rappel", "Trekking"],
-    experience: "12 años",
-    description:
-      "Instructor de escalada con experiencia internacional. Especializado en rutas de dificultad media y alta.",
-    certifications: ["EPGAMT", "UIAA"],
-    activities: 6,
-  },
-  {
-    id: 4,
-    name: "Ana Gutiérrez",
-    initials: "AG",
-    emoji: "📸",
-    color: "bg-pink-500",
-    rating: 4.9,
-    reviews: 156,
-    verified: true,
-    location: "Bariloche, Campanario",
-    specialties: ["Trekking", "Fotografía", "Observación de aves"],
-    experience: "7 años",
-    description:
-      "Guía especializada en turismo fotográfico y observación de aves. Conocedora de la flora y fauna local.",
-    certifications: ["Guía de Turismo", "Fotografía Naturaleza"],
-    activities: 9,
-  },
-  {
-    id: 5,
-    name: "Roberto Pescador",
-    initials: "RP",
-    emoji: "🎣",
-    color: "bg-teal-500",
-    rating: 5.0,
-    reviews: 42,
-    verified: true,
-    location: "Bariloche, Río Limay",
-    specialties: ["Pesca con mosca", "Fly casting", "Navegación"],
-    experience: "15 años",
-    description: "Experto en pesca con mosca en ríos y lagos patagónicos. Instructor certificado de fly casting.",
-    certifications: ["Guía de Pesca", "Navegación"],
-    activities: 3,
-  },
-  {
-    id: 6,
-    name: "Javier Nieves",
-    initials: "JN",
-    emoji: "⛷️",
-    color: "bg-indigo-500",
-    rating: 4.9,
-    reviews: 112,
-    verified: true,
-    location: "Bariloche, Catedral",
-    specialties: ["Esquí", "Snowboard", "Raquetas de nieve"],
-    experience: "9 años",
-    description: "Instructor de esquí y snowboard. Especialista en actividades invernales y seguridad en montaña.",
-    certifications: ["AADIDESS", "Avalanche Safety"],
-    activities: 7,
-  },
-  {
-    id: 7,
-    name: "Pedro Rodríguez",
-    initials: "PR",
-    emoji: "🚵",
-    color: "bg-amber-500",
-    rating: 4.7,
-    reviews: 92,
-    verified: true,
-    location: "Bariloche, Circuito Chico",
-    specialties: ["Bicicleta", "Trekking", "Parapente"],
-    experience: "6 años",
-    description: "Guía multiaventura especializado en recorridos en bicicleta y vuelos en parapente.",
-    certifications: ["MTB Guide", "Parapente Tandem"],
-    activities: 10,
-  },
-  {
-    id: 8,
-    name: "Sofía Montañez",
-    initials: "SM",
-    emoji: "🧘‍♀️",
-    color: "bg-rose-500",
-    rating: 4.8,
-    reviews: 78,
-    verified: true,
-    location: "Bariloche, Villa Catedral",
-    specialties: ["Yoga en montaña", "Trekking", "Meditación"],
-    experience: "5 años",
-    description: "Instructora de yoga y guía de trekking. Especializada en experiencias de bienestar en la naturaleza.",
-    certifications: ["Yoga Alliance", "Guía de Trekking"],
-    activities: 4,
-  },
-];
-
-
 
 // Lista de categorías de actividades disponibles
 const activityCategories = [
@@ -205,7 +68,11 @@ export default function GuidesPage() {
   const [activityCategoryOpen, setActivityCategoryOpen] = useState(false);
   const [activityLocationOpen, setActivityLocationOpen] = useState(false);
   const [mainLocationOpen, setMainLocationOpen] = useState(false);
-  const [guides, setGuides] = useState(initialGuides);
+  
+  // Guide data state
+  const [guides, setGuides] = useState<Guide[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // New: formData state
   const [formData, setFormData] = useState({
@@ -242,6 +109,25 @@ export default function GuidesPage() {
     }
   };
 
+  // Load guides data
+  useEffect(() => {
+    const loadGuides = async () => {
+      try {
+        setLoading(true)
+        const guidesData = await GuideService.getAllGuides()
+        setGuides(guidesData)
+      } catch (error) {
+        console.error('Error loading guides:', error)
+        setError('Error al cargar los guías')
+        // Fallback to empty array if no guides found
+        setGuides([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadGuides()
+  }, [])
 
   // Extraer todas las especialidades únicas de los guías
   const allSpecialties = Array.from(new Set(guides.flatMap((guide) => guide.specialties))).sort()
@@ -273,30 +159,9 @@ export default function GuidesPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormSubmitted(true);
-    // Add new guide to guides state
-    setGuides(prevGuides => [
-      ...prevGuides,
-      {
-        id: prevGuides.length + 1,
-        name: formData.name,
-        initials: formData.name
-          .split(' ')
-          .map(n => n[0])
-          .join('')
-          .toUpperCase(),
-        emoji: "🧑‍🦰", // Default emoji, can be improved
-        color: "bg-emerald-500", // Default color
-        rating: 0,
-        reviews: 0,
-        verified: false,
-        location: formData.location,
-        specialties: formData.specialties,
-        experience: formData.experience ? formData.experience + ' años' : '',
-        description: formData.bio,
-        certifications: formData.certifications,
-        activities: 0,
-      }
-    ]);
+    // Note: In a real app, this would create a guide via the API
+    // For now, we'll just show success message
+    console.log('Guide registration form submitted:', formData);
   }
 
   // Reset formData only if user starts a new registration
@@ -381,24 +246,12 @@ export default function GuidesPage() {
 
       <header className="flex items-center justify-between p-4 border-b bg-white">
         <Link href="/" className="flex items-center gap-2">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="text-emerald-600"
-          >
-            <path
-              d="M22 20L14.5 10L10.5 15L8 12L2 20"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path d="M2 20H22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <h1 className="text-xl font-bold text-emerald-700">PLAN A</h1>
+          <img src="/images/plan-a-logo-binoculars.png" alt="PLAN A Logo" className="h-8 w-auto" />
+        </Link>
+        <Link href="/guide-registration">
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            {t("becomeGuide")}
+          </Button>
         </Link>
       </header>
 
@@ -460,27 +313,41 @@ export default function GuidesPage() {
               </Card>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredGuides.map((guide) => (
-                <Link href={`/guide-profile`} key={guide.id}>
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Cargando guías...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <p className="text-red-600 mb-4">{error}</p>
+                <Button onClick={() => window.location.reload()} variant="outline">
+                  Reintentar
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredGuides.map((guide) => (
+                <Link href={`/guide-profile?id=${guide.id}&name=${encodeURIComponent(guide.name)}&emoji=${encodeURIComponent(guide.emoji || '🧑‍🦰')}&color=${encodeURIComponent(guide.color || 'bg-emerald-500')}&location=${encodeURIComponent(guide.location)}&experience=${encodeURIComponent(guide.experience || `${guide.experience_years} años`)}&rating=${guide.rating}&reviews=${guide.reviews || guide.total_reviews}&description=${encodeURIComponent(guide.description)}`} key={guide.id}>
                   <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
                     <div className="p-4">
                       {/* Modificar el Avatar para mostrar el emoji en lugar de las iniciales */}
                       <div className="flex items-start">
                         <div
-                          className={`h-16 w-16 rounded-full ${guide.color} flex items-center justify-center text-white text-2xl`}
+                          className={`h-16 w-16 rounded-full ${guide.color || 'bg-emerald-500'} flex items-center justify-center text-white text-2xl`}
                         >
-                          {guide.emoji}
+                          {guide.emoji || '🧑‍🦰'}
                         </div>
                         <div className="ml-3 flex-1">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center">
                               <h3 className="font-semibold">{guide.name}</h3>
-                              {guide.verified && <CheckCircle className="w-4 h-4 ml-1 text-blue-500" />}
+                              {guide.is_verified && <CheckCircle className="w-4 h-4 ml-1 text-blue-500" />}
                             </div>
                             <div className="flex items-center">
                               <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                               <span className="ml-1 font-medium">{guide.rating}</span>
+                              <span className="ml-1 text-sm text-gray-500">({guide.reviews || guide.total_reviews})</span>
                             </div>
                           </div>
                           <div className="flex items-center text-sm text-gray-500 mt-1">
@@ -489,7 +356,7 @@ export default function GuidesPage() {
                           </div>
                           <div className="flex items-center text-sm text-gray-500 mt-1">
                             <Award className="w-3 h-3 mr-1" />
-                            <span>{guide.experience}</span>
+                            <span>{guide.experience || `${guide.experience_years} años`}</span>
                           </div>
                         </div>
                       </div>
@@ -498,34 +365,20 @@ export default function GuidesPage() {
                         <p className="text-sm text-gray-600 line-clamp-2">{guide.description}</p>
                       </div>
 
-                      <div className="flex flex-wrap gap-1 mt-3">
-                        {guide.specialties.map((specialty, index) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="text-xs text-emerald-700 border-emerald-200 bg-emerald-50"
-                          >
-                            {specialty}
-                          </Badge>
-                        ))}
-                      </div>
+ 
 
-                      <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
-                        <div className="text-sm text-gray-500">
-                          <span className="font-medium text-gray-700">{guide.activities}</span> {t("activities")}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          <span className="font-medium text-gray-700">{guide.reviews}</span> {t("reviews")}
-                        </div>
-                        <div className="text-xs text-emerald-600 font-medium">{t("viewProfile")}</div>
+                      <div className="flex justify-center items-center mt-3 pt-3 border-t border-gray-100">
+                        
+                        <div className="text-lg text-emerald-600 font-medium">{t("viewProfile")}</div>
                       </div>
                     </div>
                   </Card>
                 </Link>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
-            {filteredGuides.length === 0 && (
+            {!loading && !error && filteredGuides.length === 0 && (
               <div className="text-center py-10">
                 <div className="text-gray-400 mb-2">
                   <svg
@@ -546,6 +399,20 @@ export default function GuidesPage() {
                 </div>
                 <h3 className="text-lg font-medium text-gray-700">No se encontraron guías</h3>
                 <p className="text-gray-500 mt-1">Intenta con otra búsqueda o filtro</p>
+              </div>
+            )}
+
+            {/* Reviews Section */}
+            {filteredGuides.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-xl font-semibold mb-4">{t("recentReviews")}</h3>
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <ReviewSection 
+                    guideId={filteredGuides[0]?.id?.toString() || "1"} 
+                    showReviewForm={false}
+                    maxReviews={3}
+                  />
+                </div>
               </div>
             )}
           </TabsContent>
@@ -992,7 +859,7 @@ export default function GuidesPage() {
           </svg>
           <span className="text-xs mt-1">{t("home")}</span>
         </Link>
-        <Link href="/search" className="flex flex-col items-center text-gray-400">
+        <Link href="/filters" className="flex flex-col items-center text-gray-400">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"

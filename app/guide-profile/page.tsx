@@ -6,13 +6,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Star, Award, Calendar, MapPin, Clock, Shield, ThumbsUp } from "lucide-react"
 import { useTranslation } from "react-i18next";
 import "../../i18n-client";
-import { createContext } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 export default function GuideProfilePage() {
   const { t } = useTranslation("pages");
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const name = searchParams.get("name") || t("guideName")
+  const emoji = searchParams.get("emoji") || "🏔️"
+  const color = searchParams.get("color") || "bg-blue-500"
+  const location = searchParams.get("location") || t("location")
+  const experience = searchParams.get("experience") || t("experienceValue")
+  const rating = searchParams.get("rating") || "4.8"
+  const reviews = searchParams.get("reviews") || t("reviews")
+  const description = searchParams.get("description") || t("about_Value")
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-sky-50">
       <div className="relative h-48 bg-emerald-600">
-        <button className="absolute top-4 left-4 p-2 rounded-full bg-black/20 text-white">
+        <button type="button" onClick={() => router.back()} className="absolute top-4 left-4 p-2 rounded-full bg-black/20 text-white">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
@@ -31,52 +41,32 @@ export default function GuideProfilePage() {
 
       <div className="relative px-4 pb-4">
         <div className="flex justify-between -mt-16">
-          <div className="h-32 w-32 rounded-full bg-blue-500 border-4 border-white flex items-center justify-center text-white text-5xl shadow-lg">
-            🏔️
+          <div className={`h-32 w-32 rounded-full ${color} border-4 border-white flex items-center justify-center text-white text-5xl shadow-lg`}>
+            {emoji}
           </div>
           <Button className="mt-20 bg-emerald-600 hover:bg-emerald-700">{t("contact")}</Button>
         </div>
 
         <div className="mt-4">
           <div className="flex items-center">
-            <h1 className="text-2xl font-bold">{t("guideName")}</h1>
+            <h1 className="text-2xl font-bold">{name}</h1>
             <Badge className="ml-2 bg-blue-500 hover:bg-blue-600">{t("verified")}</Badge>
           </div>
 
-          <div className="flex items-center mt-1 text-gray-600">
-            <MapPin className="w-4 h-4 mr-1" />
-            <span>{t("location")}</span>
-          </div>
 
           <div className="flex items-center mt-2">
             <div className="flex items-center">
               <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-              <span className="ml-1 font-medium">4.8</span>
+              <span className="ml-1 font-medium">{rating}</span>
               <span className="mx-1 text-gray-400">•</span>
-              <span className="text-gray-600">{t("reviews")}</span>
+              <span className="text-gray-600">{reviews} {t("reviews")}</span>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 mt-3">
-            <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
-              {t("trekking")}
-            </Badge>
-            <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
-              {t("climbing")}
-            </Badge>
-            <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
-              {t("mountain")}
-            </Badge>
-            <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
-              {t("guideCertified")}
-            </Badge>
-          </div>
 
           <div className="mt-4">
             <h2 className="text-lg font-semibold">{t("about")}</h2>
-            <p className="mt-2 text-gray-600">
-              {t("about_Value")}
-            </p>
+            <p className="mt-2 text-gray-600">{description}</p>
           </div>
 
           <div className="flex flex-wrap gap-4 mt-6">
@@ -84,7 +74,7 @@ export default function GuideProfilePage() {
               <Award className="w-5 h-5 text-emerald-600 mr-2" />
               <div>
                 <p className="text-sm text-gray-500">{t("experience")}</p>
-                <p className="font-medium">{t("experienceValue")}</p>
+                <p className="font-medium">{experience}</p>
               </div>
             </div>
             <div className="flex items-center">
@@ -141,7 +131,7 @@ export default function GuideProfilePage() {
                             <span className="ml-1">{t("ratingValue")}</span>
                             <span className="ml-1 text-gray-500">({t("reviewsCount")})</span>
                           </div>
-                          <p className="font-semibold">{t("priceValue")}</p>
+                          {/* <p className="font-semibold">{t("priceValue")}</p> */}
                         </div>
                       </div>
                     </div>

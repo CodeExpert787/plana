@@ -108,10 +108,10 @@ export default function BookingStepsPage({ params }: { params: { id: string } })
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-sky-50">
       {/* Header */}
       <header className="flex items-center justify-between p-4 bg-white border-b">
-        <Link href={`/activity-detail?id=${activity.id}`} className="flex items-center gap-2">
+        {/* <Link href={`/activity-detail?id=${activity.id}`} className="flex items-center gap-2">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
           <span className="font-medium">Volver</span>
-        </Link>
+        </Link> */}
         <h1 className="text-lg font-semibold">Reservar</h1>
         <div className="w-16"></div>
       </header>

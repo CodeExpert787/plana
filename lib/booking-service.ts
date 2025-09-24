@@ -1,117 +1,260 @@
-import { supabase, isSupabaseConfigured } from "./supabase"
+import { supabase } from './supabase'
 
-export interface BookingData {
-  activityId: string
-  userName: string
-  userEmail: string
-  userPhone: string
-  date: string
-  participants: number
-  totalPrice: number
-}
-
-export interface Booking extends BookingData {
+export interface Booking {
   id: string
-  status: string
-  createdAt: string
-  updatedAt: string
-}
-
-// Función para crear una reserva
-export async function createBooking(
-  bookingData: BookingData,
-): Promise<{ success: boolean; booking?: Booking; error?: string }> {
-  if (!isSupabaseConfigured()) {
-    // Simular creación de reserva
-    const mockBooking: Booking = {
-      id: `mock_${Date.now()}`,
-      ...bookingData,
-      status: "confirmed",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    console.log("📦 Reserva simulada creada:", mockBooking)
-    return { success: true, booking: mockBooking }
+  user_id: string
+  activity_id: string
+  guide_id: string
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+  participants: number
+  total_price: number
+  booking_date: string
+  activity_date: string
+  activity_time: string
+  special_requests?: string
+  created_at: string
+  updated_at: string
+  // Joined data
+  activity?: {
+    id: string
+    title: string
+    description: string
+    image: string
+    price: number
+    duration: string
+    location: string
+    category: string
   }
-
-  try {
-    const { data, error } = await supabase!
-      .from("bookings")
-      .insert({
-        activity_id: bookingData.activityId,
-        user_name: bookingData.userName,
-        user_email: bookingData.userEmail,
-        user_phone: bookingData.userPhone,
-        date: bookingData.date,
-        participants: bookingData.participants,
-        total_price: bookingData.totalPrice,
-        status: "confirmed",
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error("Error creando reserva:", error)
-      return { success: false, error: error.message }
-    }
-
-    const booking: Booking = {
-      id: data.id,
-      activityId: data.activity_id,
-      userName: data.user_name,
-      userEmail: data.user_email,
-      userPhone: data.user_phone,
-      date: data.date,
-      participants: data.participants,
-      totalPrice: data.total_price,
-      status: data.status,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    }
-
-    console.log("✅ Reserva creada en Supabase:", booking)
-    return { success: true, booking }
-  } catch (error) {
-    console.error("Error conectando con Supabase:", error)
-    return { success: false, error: "Error de conexión" }
+  guide?: {
+    id: string
+    name: string
+    avatar: string
+    rating: number
   }
 }
 
-// Función para obtener reservas por email
-export async function getBookingsByEmail(email: string): Promise<Booking[]> {
-  if (!isSupabaseConfigured()) {
-    console.log("📦 Modo mock - no hay reservas guardadas")
-    return []
+export class BookingService {
+  // Get all bookings for a user
+  static async getUserBookings(userId: string): Promise<Booking[]> {
+    try {
+      console.log('BookingService: Fetching bookings for user:', userId)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          activity:activities(
+            id,
+            title,
+            description,
+            image,
+            price,
+            duration,
+            location,
+            category
+          ),
+          guide:user_profiles(
+            id,
+            name,
+            avatar,
+            rating
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      console.log('BookingService: Supabase response:', { data, error })
+
+      if (error) {
+        console.error('BookingService: Supabase error:', error)
+        throw error
+      }
+
+      console.log('BookingService: Bookings found:', data)
+      return data || []
+    } catch (error) {
+      console.error('BookingService: Error fetching user bookings:', error)
+      throw error
+    }
   }
 
-  try {
-    const { data, error } = await supabase!
-      .from("bookings")
-      .select("*")
-      .eq("user_email", email)
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      console.error("Error obteniendo reservas:", error)
-      return []
+  // Get completed bookings for a user
+  static async getCompletedBookings(userId: string): Promise<Booking[]> {
+    try {
+      const bookings = await this.getUserBookings(userId)
+      return bookings.filter(booking => booking.status === 'completed')
+    } catch (error) {
+      console.error('BookingService: Error fetching completed bookings:', error)
+      throw error
     }
+  }
 
-    return data.map((booking) => ({
-      id: booking.id,
-      activityId: booking.activity_id,
-      userName: booking.user_name,
-      userEmail: booking.user_email,
-      userPhone: booking.user_phone,
-      date: booking.date,
-      participants: booking.participants,
-      totalPrice: booking.total_price,
-      status: booking.status,
-      createdAt: booking.created_at,
-      updatedAt: booking.updated_at,
-    }))
-  } catch (error) {
-    console.error("Error conectando con Supabase:", error)
-    return []
+  // Get upcoming bookings for a user
+  static async getUpcomingBookings(userId: string): Promise<Booking[]> {
+    try {
+      const bookings = await this.getUserBookings(userId)
+      return bookings.filter(booking => 
+        booking.status === 'confirmed' || booking.status === 'pending'
+      )
+    } catch (error) {
+      console.error('BookingService: Error fetching upcoming bookings:', error)
+      throw error
+    }
+  }
+
+  // Create a new booking
+  static async createBooking(bookingData: Omit<Booking, 'id' | 'created_at' | 'updated_at'>): Promise<Booking> {
+    try {
+      console.log('BookingService: Creating booking with data:', bookingData)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert(bookingData)
+        .select(`
+          *,
+          activity:activities(
+            id,
+            title,
+            description,
+            image,
+            price,
+            duration,
+            location,
+            category
+          ),
+          guide:user_profiles(
+            id,
+            name,
+            avatar,
+            rating
+          )
+        `)
+        .single()
+
+      console.log('BookingService: Create booking response:', { data, error })
+
+      if (error) {
+        console.error('BookingService: Error creating booking:', error)
+        throw error
+      }
+
+      console.log('BookingService: Booking created successfully:', data)
+      return data
+    } catch (error) {
+      console.error('BookingService: Error creating booking:', error)
+      throw error
+    }
+  }
+
+  // Update booking status
+  static async updateBookingStatus(bookingId: string, status: Booking['status']): Promise<Booking> {
+    try {
+      console.log('BookingService: Updating booking status:', { bookingId, status })
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({ 
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+        .select(`
+          *,
+          activity:activities(
+            id,
+            title,
+            description,
+            image,
+            price,
+            duration,
+            location,
+            category
+          ),
+          guide:user_profiles(
+            id,
+            name,
+            avatar,
+            rating
+          )
+        `)
+        .single()
+
+      console.log('BookingService: Update booking response:', { data, error })
+
+      if (error) {
+        console.error('BookingService: Error updating booking:', error)
+        throw error
+      }
+
+      console.log('BookingService: Booking updated successfully:', data)
+      return data
+    } catch (error) {
+      console.error('BookingService: Error updating booking:', error)
+      throw error
+    }
+  }
+
+  // Get booking by ID
+  static async getBookingById(bookingId: string): Promise<Booking | null> {
+    try {
+      console.log('BookingService: Fetching booking by ID:', bookingId)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          activity:activities(
+            id,
+            title,
+            description,
+            image,
+            price,
+            duration,
+            location,
+            category
+          ),
+          guide:user_profiles(
+            id,
+            name,
+            avatar,
+            rating
+          )
+        `)
+        .eq('id', bookingId)
+        .single()
+
+      console.log('BookingService: Get booking response:', { data, error })
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.log('BookingService: Booking not found')
+          return null
+        }
+        console.error('BookingService: Supabase error:', error)
+        throw error
+      }
+
+      console.log('BookingService: Booking found:', data)
+      return data
+    } catch (error) {
+      console.error('BookingService: Error fetching booking by ID:', error)
+      throw error
+    }
   }
 }

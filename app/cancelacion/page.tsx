@@ -25,7 +25,6 @@ export default function PoliticaCancelacionPage() {
               />
               <path d="M2 20H22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
-            <h1 className="text-xl font-bold text-emerald-700">PLAN A</h1>
           </Link>
         </div>
       </header>

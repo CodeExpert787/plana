@@ -12,12 +12,15 @@ import { useLocalizedActivities } from "@/hooks/useLocalizedActivities"
 import PersonalInfoForm, { type PersonalInfo } from "@/components/personal-info-form"
 import { sendBookingConfirmationEmail, generateConfirmationCode, generateBookingId } from "@/lib/email-service"
 import { useTranslation } from "react-i18next"
+import { useAuth } from "@/lib/auth-context"
+import ProtectedRoute from "@/components/protected-route"
 import "../../../../i18n-client"
 export default function BookingStepsPage({ params }: { params: { id: string } }) {
   const id = params.id
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useTranslation("pages")
+  const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo | null>(null)
@@ -99,6 +102,7 @@ export default function BookingStepsPage({ params }: { params: { id: string } })
         cardNumber: paymentInfo.cardNumber,
         cardName: paymentInfo.cardName,
         expiry: paymentInfo.expiry,
+        cvv: paymentInfo.cvv,
       }
       const bookingData = {
         personalInfo,
@@ -135,18 +139,19 @@ export default function BookingStepsPage({ params }: { params: { id: string } })
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-sky-50">
+    <ProtectedRoute>
+      <div className="">
       {/* Header */}
-      <header className="flex items-center justify-between p-4 bg-white border-b">
-        <Link href={`/activity-detail?id=${activity.id}`} className="flex items-center gap-2">
+      <header className="flex items-center justify-center p-4 bg-white border-b">
+        {/* <Link href={`/activity-detail?id=${activity.id}`} className="flex items-center gap-2">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
           <span className="font-medium">{t("back")}</span>
-        </Link>
+        </Link> */}
         <h1 className="text-lg font-semibold">{t("book")}</h1>
         <div className="w-16"></div>
       </header>
 
-      <div className="container max-w-md mx-auto p-4">
+      <div className="container max-w-md mx-auto p-4 pb-28">
         {/* Progress Steps */}
         <div className="flex items-center justify-between mb-6">
           {steps.map((step, index) => (
@@ -209,7 +214,7 @@ export default function BookingStepsPage({ params }: { params: { id: string } })
             <CardContent className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>{t("demoMode")}:</strong> {t("demoModeDescription")}
+                  {t("demoModeDescription")}
                 </p>
               </div>
 
@@ -283,6 +288,82 @@ export default function BookingStepsPage({ params }: { params: { id: string } })
           </Card>
         )}
       </div>
-    </div>
+      <nav className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t">
+        <div className=" mx-auto flex items-center justify-around p-4">
+        <Link href="/" className="flex flex-col items-center text-emerald-600">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+          <span className="text-xs mt-1">{t("home", "Home")}</span>
+        </Link>
+        <Link href="/filters" className="flex flex-col items-center text-gray-400">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <span className="text-xs mt-1">{t("search", "Search")}</span>
+        </Link>
+        <Link href="/guides" className="flex flex-col items-center text-gray-400">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span className="text-xs mt-1">{t("guides")}</span>
+        </Link>
+        {/* Modificado: Ahora el botón de perfil en la navegación inferior enlaza a la página de perfil/create */}
+        <Link href="/profile" className="flex flex-col items-center text-gray-400">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span className="text-xs mt-1">{t("profile", "Profile")}</span>
+        </Link>
+        </div>
+      </nav>
+      </div>
+    </ProtectedRoute>
   )
 }

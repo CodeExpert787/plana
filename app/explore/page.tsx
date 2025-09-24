@@ -159,7 +159,6 @@ export default function ExplorePage() {
             />
             <path d="M2 20H22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
-          <h1 className="text-xl font-bold text-emerald-700">PLAN A</h1>
         </div>
         <div className="flex items-center gap-3">
           <button className="p-2 rounded-full hover:bg-gray-100">
@@ -469,7 +468,7 @@ export default function ExplorePage() {
           </svg>
           <span className="text-xs mt-1">Inicio</span>
         </Link>
-        <Link href="/search" className="flex flex-col items-center text-gray-400">
+        <Link href="/filters" className="flex flex-col items-center text-gray-400">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"

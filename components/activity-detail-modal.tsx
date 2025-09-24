@@ -58,7 +58,7 @@ export function ActivityDetailModal({
             src={images[currentImageIndex] || "/placeholder.svg"}
             alt={activity.title}
             fill
-            className="object-contain bg-black"
+            className="object-auto bg-black"
           />
           {images.length > 1 && (
             <>
@@ -81,7 +81,7 @@ export function ActivityDetailModal({
                 <ChevronRight size={24} />
               </button>
               <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
-                {images.map((_, index) => (
+                {images.map((_: string, index: number) => (
                   <div
                     key={index}
                     className={`h-[10px] rounded-full ${

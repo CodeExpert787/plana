@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -19,6 +19,8 @@ export default function CreateProfilePage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [profileImage, setProfileImage] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation("pages");
   // Estados para los campos del formulario
   const [formData, setFormData] = useState({
@@ -35,15 +37,34 @@ export default function CreateProfilePage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  // Simular carga de imagen
+  // Abrir cámara (botón con icono de cámara)
   const handleImageUpload = () => {
-    // En una implementación real, aquí se cargaría la imagen al servidor
-    // Por ahora, simplemente simulamos una carga con un placeholder
+    if (loading) return
+    cameraInputRef.current?.click()
+  }
+
+  // Abrir selector de archivos (botón "Upload")
+  const handleFilePicker = () => {
+    if (loading) return
+    fileInputRef.current?.click()
+  }
+
+  // Manejar selección de archivo/captura
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
     setLoading(true)
-    setTimeout(() => {
-      setProfileImage("/images/sofia-profile.jpeg")
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const result = reader.result as string
+      setProfileImage(result)
       setLoading(false)
-    }, 1500)
+    }
+    reader.readAsDataURL(file)
+
+    // Permitir re-seleccionar el mismo archivo
+    e.target.value = ""
   }
 
   // Manejar envío del formulario
@@ -67,24 +88,7 @@ export default function CreateProfilePage() {
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-emerald-50 to-sky-50">
       <header className="flex items-center justify-between p-4 border-b bg-white">
         <Link href="/" className="flex items-center gap-2">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="text-emerald-600"
-          >
-            <path
-              d="M22 20L14.5 10L10.5 15L8 12L2 20"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path d="M2 20H22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <h1 className="text-xl font-bold text-emerald-700">PLAN A</h1>
+          <img src="/images/plan-a-logo-binoculars.png" alt="PLAN A Logo" className="h-8 w-auto" />
         </Link>
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5 text-gray-600" />
@@ -137,7 +141,7 @@ export default function CreateProfilePage() {
                       <Input
                         id="name"
                         name="name"
-                        placeholder="Ej. Sofia Aliaga"
+                        placeholder="Ej. Juan Perez"
                         value={formData.name}
                         onChange={handleChange}
                         required
@@ -228,12 +232,29 @@ export default function CreateProfilePage() {
                       type="button"
                       variant="outline"
                       className="flex items-center gap-2"
-                      onClick={handleImageUpload}
+                      onClick={handleFilePicker}
                       disabled={loading}
                     >
                       <Upload className="h-4 w-4" />
                       {t("uploadPhoto")}
                     </Button>
+
+                    {/* Inputs ocultos para archivo y cámara */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
                   </div>
                 )}
 
@@ -302,7 +323,7 @@ export default function CreateProfilePage() {
                         <ChevronRight className="ml-2 h-4 w-4" />
                       </>
                     ) : (
-                      "Completar perfil"
+                      t("completeProfile")
                     )}
                   </Button>
                 </div>
