@@ -61,7 +61,8 @@ export default function FiltersPage() {
   const [escalada, setEscalada] = useState(true)
   const [esqui, setEsqui] = useState(true)
   const [bicicleta, setBicicleta] = useState(false)
-  const [kayak, setKayak] = useState(false)
+  const [kitesurf, setKitesurf] = useState(false)
+  const [deportesLacustres, setDeportesLacustres] = useState(false)
   const [pesca, setPesca] = useState(false)
 
   // Actividades adicionales (mostradas al expandir)
@@ -119,31 +120,27 @@ export default function FiltersPage() {
 
     // Añadir parámetros básicos
     params.append("view", viewMode)
-    if (selectedDate) {
-      params.append("date", selectedDate.toISOString())
-    }
-    params.append("people", people.toString())
+    // if (selectedDate) {
+    //   params.append("date", selectedDate.toISOString())
+    // }
+    // params.append("people", people.toString())
 
     // Añadir temporada
-    params.append("season", season === "winter" ? t("winter") : t("summer"))
+    params.append("season", season === "winter" ? "invierno" : "verano")
 
     // Añadir categorías seleccionadas
     const selectedCategories = []
-    if (trekking) selectedCategories.push(t("trekking"))
-    if (escalada) selectedCategories.push(t("climbing"))
-    if (esqui) selectedCategories.push(t("skiing"))
-    if (bicicleta) selectedCategories.push(t("cycling"))
-    if (kayak) selectedCategories.push(t("kayak"))
-    if (pesca) selectedCategories.push(t("fishing"))
-    if (parapente) selectedCategories.push(t("paragliding"))
+    if (trekking) selectedCategories.push("Trekking")
+    if (escalada) selectedCategories.push("Escalada")
+    if (esqui) selectedCategories.push("Esquí")
+    if (bicicleta) selectedCategories.push("Bicicleta")
+    if (kitesurf) selectedCategories.push("Kitesurf")
+    if (deportesLacustres) selectedCategories.push("Deportes lacustres")
+    if (pesca) selectedCategories.push("Pesca")
 
     if (selectedCategories.length > 0) {
       params.append("categories", selectedCategories.join(","))
     }
-
-    // Añadir ubicación seleccionada
-    params.append("location", location.id.toString())
-    params.append("locationName", location.name)
 
     return `/search?${params.toString()}`
   }
@@ -543,7 +540,7 @@ export default function FiltersPage() {
                     onChange={() => setTrekking(!trekking)}
                     className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
                   />
-                  <label htmlFor="trekking" className="ml-2 text-sm font-medium text-gray-700">{t("trekking", "Trekking")}</label>
+                  <label htmlFor="trekking" className="ml-2 text-sm font-medium text-gray-700">Trekking</label>
                 </div>
                 <div className="flex items-center">
                   <input
@@ -553,7 +550,7 @@ export default function FiltersPage() {
                     onChange={() => setEscalada(!escalada)}
                     className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
                   />
-                  <label htmlFor="escalada" className="ml-2 text-sm font-medium text-gray-700">{t("climbing", "Climbing")}</label>
+                  <label htmlFor="escalada" className="ml-2 text-sm font-medium text-gray-700">Escalada</label>
                 </div>
                 <div className="flex items-center">
                   <input
@@ -563,7 +560,7 @@ export default function FiltersPage() {
                     onChange={() => setEsqui(!esqui)}
                     className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
                   />
-                  <label htmlFor="esqui" className="ml-2 text-sm font-medium text-gray-700">{t("skiing", "Skiing")}</label>
+                  <label htmlFor="esqui" className="ml-2 text-sm font-medium text-gray-700">Esqui</label>
                 </div>
                 <div className="flex items-center">
                   <input
@@ -573,17 +570,17 @@ export default function FiltersPage() {
                     onChange={() => setBicicleta(!bicicleta)}
                     className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
                   />
-                  <label htmlFor="bicicleta" className="ml-2 text-sm font-medium text-gray-700">{t("cycling", "Cycling")}</label>
+                  <label htmlFor="bicicleta" className="ml-2 text-sm font-medium text-gray-700">Bicicleta</label>
                 </div>
                 <div className="flex items-center">
                   <input
-                    id="kayak"
+                    id="kitesurf"
                     type="checkbox"
-                    checked={kayak}
-                    onChange={() => setKayak(!kayak)}
+                    checked={kitesurf}
+                    onChange={() => setKitesurf(!kitesurf)}
                     className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
                   />
-                  <label htmlFor="kayak" className="ml-2 text-sm font-medium text-gray-700">{t("kayak", "Kayak")}</label>
+                  <label htmlFor="kitesurf" className="ml-2 text-sm font-medium text-gray-700">Kitesurf</label>
                 </div>
                 <div className="flex items-center">
                   <input
@@ -593,97 +590,21 @@ export default function FiltersPage() {
                     onChange={() => setPesca(!pesca)}
                     className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
                   />
-                  <label htmlFor="pesca" className="ml-2 text-sm font-medium text-gray-700">{t("fishing", "Fishing")}</label>
+                  <label htmlFor="pesca" className="ml-2 text-sm font-medium text-gray-700">Pesca</label>
                 </div>
-
-                {/* Opciones adicionales que se muestran/ocultan */}
-                {showMoreActivities && (
-                  <>
-                    <div className="flex items-center">
-                      <input
-                        id="parapente"
-                        type="checkbox"
-                        checked={parapente}
-                        onChange={() => setParapente(!parapente)}
-                        className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                      />
-                      <label htmlFor="parapente" className="ml-2 text-sm font-medium text-gray-700">{t("paragliding", "Paragliding")}</label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        id="cabalgata"
-                        type="checkbox"
-                        checked={cabalgata}
-                        onChange={() => setCabalgata(!cabalgata)}
-                        className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                      />
-                      <label htmlFor="cabalgata" className="ml-2 text-sm font-medium text-gray-700">{t("horseback", "Horseback riding")}</label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        id="fotografia"
-                        type="checkbox"
-                        checked={fotografia}
-                        onChange={() => setFotografia(!fotografia)}
-                        className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                      />
-                      <label htmlFor="fotografia" className="ml-2 text-sm font-medium text-gray-700">{t("photography", "Photography")}</label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        id="camping"
-                        type="checkbox"
-                        checked={camping}
-                        onChange={() => setCamping(!camping)}
-                        className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                      />
-                      <label htmlFor="camping" className="ml-2 text-sm font-medium text-gray-700">{t("camping", "Camping")}</label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        id="navegacion"
-                        type="checkbox"
-                        checked={navegacion}
-                        onChange={() => setNavegacion(!navegacion)}
-                        className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                      />
-                      <label htmlFor="navegacion" className="ml-2 text-sm font-medium text-gray-700">{t("navigation", "Navigation")}</label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        id="observacionAves"
-                        type="checkbox"
-                        checked={observacionAves}
-                        onChange={() => setObservacionAves(!observacionAves)}
-                        className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                      />
-                      <label htmlFor="observacionAves" className="ml-2 text-sm font-medium text-gray-700">{t("birdwatching", "Birdwatching")}</label>
-                    </div>
-                  </>
-                )}
+                <div className="flex items-center">
+                  <input
+                    id="pesca"
+                    type="checkbox"
+                    checked={deportesLacustres}
+                    onChange={() => setDeportesLacustres(!deportesLacustres)}
+                    className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                  />
+                  <label htmlFor="pesca" className="ml-2 text-sm font-medium text-gray-700">Deportes lacustres</label>
+                </div>
               </div>
 
-              {/* Botón para mostrar/ocultar más opciones */}
-              <button
-                className="w-full text-sm text-emerald-600 mt-2 flex items-center justify-center hover:underline"
-                onClick={toggleMoreActivities}
-              >
-                {showMoreActivities ? t("seeLess", "See fewer options") : t("seeMore", "See more options")}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="ml-1"
-                >
-                  {showMoreActivities ? <path d="m18 15-6-6-6 6" /> : <path d="m6 9 6 6 6-6" />}
-                </svg>
-              </button>
+            
             </div>
           </Card>
 

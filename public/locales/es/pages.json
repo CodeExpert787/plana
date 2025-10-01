@@ -453,5 +453,6 @@
   "submitReview": "Enviar Reseña",
   "noReviewsYet": "Aún no hay reseñas",
   "recentReviews": "Reseñas Recientes",
-  "becomeGuide": "Ser Guía"
+  "becomeGuide": "Ser Guía",
+  "youAlreadyReviewed": "Ya has reseñado esta actividad."
 } 

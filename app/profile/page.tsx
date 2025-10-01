@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/protected-route";
 import { UserProfileService, UserProfile } from "@/lib/user-profile-service";
 import { BookingService, Booking } from "@/lib/booking-service";
+import { ActivitiesService } from "@/lib/activities-service";
 import "../../i18n-client";
 
 
@@ -55,120 +56,7 @@ const locations = [
 ]
 // Actualizar los datos de ejemplo para el perfil con el nombre y la foto de Sofia
 
-// Datos de ejemplo para actividades likeadas
-const likedActivities = [
-  {
-    id: 1,
-    title: "Trekking al Cerro Catedral",
-    image: "/images/trekking-catedral.png",
-    price: 15000,
-    duration: "4 horas",
-    guide: {
-      name: "Carlos Montaña",
-      rating: 4.8,
-    },
-    tags: ["Trekking", "Naturaleza"],
-  },
-  {
-    id: 2,
-    title: "Kayak en Lago Gutiérrez",
-    image: "/images/kayak-gutierrez.png",
-    price: 12000,
-    duration: "3 horas",
-    guide: {
-      name: "Laura Ríos",
-      rating: 4.9,
-    },
-    tags: ["Kayak", "Lago"],
-  },
-  {
-    id: 5,
-    title: "Esquí en Cerro Catedral",
-    image: "/images/ski-catedral.png",
-    price: 22000,
-    duration: "4 horas",
-    guide: {
-      name: "Javier Nieves",
-      rating: 4.9,
-    },
-    tags: ["Esquí", "Nieve"],
-  },
-]
-
-// Datos de ejemplo para reservas
-const bookings = [
-  {
-    id: 101,
-    title: "Trekking al Cerro Catedral",
-    image: "/images/trekking-catedral.png",
-    date: "15 de junio, 2025",
-    time: "09:00 AM",
-    price: 15000,
-    status: "confirmed", // confirmed, pending, cancelled
-    participants: 2,
-    guide: {
-      name: "Carlos Montaña",
-      rating: 4.8,
-    },
-  },
-  {
-    id: 102,
-    title: "Kayak en Lago Gutiérrez",
-    image: "/images/kayak-gutierrez.png",
-    date: "20 de junio, 2025",
-    time: "10:30 AM",
-    price: 24000, // precio por 2 personas
-    status: "pending",
-    participants: 2,
-    guide: {
-      name: "Laura Ríos",
-      rating: 4.9,
-    },
-  },
-]
-
-// Datos de ejemplo para actividades completadas
-const completedActivities = [
-  {
-    id: 201,
-    title: "Escalada en Piedras Blancas",
-    image: "/images/escalada-piedras-blancas.png",
-    date: "10 de mayo, 2025",
-    price: 18000,
-    rating: 5,
-    reviewed: true,
-    guide: {
-      name: "Martín Escalante",
-      rating: 4.7,
-    },
-  },
-  {
-    id: 202,
-    title: "Trekking al Cerro Llao Llao",
-    image: "/images/trekking-llao-llao.png",
-    date: "5 de mayo, 2025",
-    price: 12000,
-    rating: 4,
-    reviewed: true,
-    guide: {
-      name: "Carlos Montaña",
-      rating: 4.8,
-    },
-  },
-  {
-    id: 203,
-    title: "Bike Circuito Chico",
-    image: "/images/bike-circuito-chico.png",
-    date: "28 de abril, 2025",
-    price: 9000,
-    rating: 5,
-    reviewed: true,
-    guide: {
-      name: "Pedro Rodríguez",
-      rating: 4.7,
-    },
-  },
-]
+// Eliminated mock completedActivities; will derive from completedBookings
 
 export default function ProfilePage() {
   const { t } = useTranslation("pages");
@@ -180,6 +68,34 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [completedBookings, setCompletedBookings] = useState<Booking[]>([])
+  const [likedIds, setLikedIds] = useState<string[]>([])
+  const [favoriteActivities, setFavoriteActivities] = useState<any[]>([])
+  // Load favorite activities from localStorage and fetch from DB
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('likedActivities')
+      if (!saved) {
+        setFavoriteActivities([])
+        setLikedIds([])
+        return
+      }
+      const ids = JSON.parse(saved) as string[]
+      if (Array.isArray(ids) && ids.length > 0) {
+        setLikedIds(ids)
+        ActivitiesService.getActivitiesByIds(ids).then(setFavoriteActivities).catch(err => {
+          console.error('Failed to load favorite activities:', err)
+          setFavoriteActivities([])
+        })
+      } else {
+        setFavoriteActivities([])
+        setLikedIds([])
+      }
+    } catch (e) {
+      console.error('Error parsing likedActivities:', e)
+      setFavoriteActivities([])
+      setLikedIds([])
+    }
+  }, [])
   const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([])
   const [bookingsLoading, setBookingsLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -367,6 +283,32 @@ export default function ProfilePage() {
   const [camping, setCamping] = useState(false)
   const [navegacion, setNavegacion] = useState(false)
   const [observacionAves, setObservacionAves] = useState(false)
+
+  // Toggle favorite
+  const toggleFavorite = async (activityId: string) => {
+    setLikedIds(prev => {
+      const exists = prev.includes(activityId)
+      const next = exists ? prev.filter(id => id !== activityId) : [...prev, activityId]
+      localStorage.setItem('likedActivities', JSON.stringify(next))
+      if (exists) {
+        // Remove from current favorites list
+        setFavoriteActivities(curr => curr.filter(a => a.id !== activityId))
+      } else {
+        // Fetch and append newly liked activity if not present
+        ActivitiesService.getActivitiesByIds([activityId])
+          .then(res => {
+            if (res && res.length > 0) {
+              setFavoriteActivities(curr => {
+                const already = curr.some(a => a.id === activityId)
+                return already ? curr : [...curr, res[0]]
+              })
+            }
+          })
+          .catch(err => console.error('Failed to fetch liked activity:', err))
+      }
+      return next
+    })
+  }
 
   // Filtrar ubicaciones según la búsqueda
   const filteredLocations = locations.filter(
@@ -650,44 +592,28 @@ export default function ProfilePage() {
               <Card>
                 <CardContent className="p-4">
                   <h3 className="font-semibold mb-3">{t("completedActivities")}</h3>
-                  {completedActivities.length > 0 ? (
+                  {completedBookings.length > 0 ? (
                     <div className="space-y-3">
-                      {completedActivities.map((activity) => (
-                        <div key={activity.id} className="flex items-start border-b border-gray-100 pb-3 last:border-0">
+                      {completedBookings.slice(0, 3).map((booking) => (
+                        <div key={booking.id} className="flex items-start border-b border-gray-100 pb-3 last:border-0">
                           <div className="h-16 w-16 rounded-lg overflow-hidden relative flex-shrink-0">
                             <Image
-                              src={activity.image || "/placeholder.svg"}
-                              alt={activity.title}
+                              src={booking.activity?.image || "/placeholder.svg"}
+                              alt={booking.activity?.title || "Actividad"}
                               fill
                               className="object-cover"
                             />
                           </div>
                           <div className="ml-3 flex-1">
-                            <h4 className="font-medium">{activity.title}</h4>
+                            <h4 className="font-medium">{booking.activity?.title || "Actividad"}</h4>
                             <div className="flex items-center text-sm text-gray-500">
                               <CalendarIcon className="h-3 w-3 mr-1" />
-                              <span>{activity.date}</span>
-                            </div>
-                            <div className="flex items-center justify-between mt-1">
-                              <div className="flex items-center">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`h-4 w-4 ${
-                                      i < activity.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                              {activity.reviewed ? (
-                                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200">{t("reviewed")}</Badge>
-                              ) : (
-                                <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700">
-                                  {t("leaveReview")}
-                                </Button>
-                              )}
+                              <span>{new Date(booking.activity_date).toLocaleDateString('es-ES')}</span>
                             </div>
                           </div>
+                          <Link href={`/activity-detail?id=${booking.activity_id}`}>
+                            <Button variant="ghost" size="sm">{t("viewDetails")}</Button>
+                          </Link>
                         </div>
                       ))}
                     </div>
@@ -848,15 +774,15 @@ export default function ProfilePage() {
                 </Link>
               </div>
 
-              {likedActivities.length > 0 ? (
+              {favoriteActivities.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
-                  {likedActivities.map((activity) => (
+                  {favoriteActivities.map((activity) => (
                     <Card key={activity.id}>
                       <CardContent className="p-0">
                         <div className="flex">
                           <div className="h-32 w-32 relative flex-shrink-0">
                             <Image
-                              src={activity.image || "/placeholder.svg"}
+                              src={(activity.images && activity.images[0]) || activity.image || "/placeholder.svg"}
                               alt={activity.title}
                               fill
                               className="object-cover rounded-l-lg"
@@ -865,28 +791,31 @@ export default function ProfilePage() {
                           <div className="p-3 flex-1">
                             <div className="flex justify-between items-start">
                               <h4 className="font-medium">{activity.title}</h4>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <Heart className="h-5 w-5 fill-red-500 text-red-500" />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => toggleFavorite(activity.id)}
+                                aria-pressed={likedIds.includes(activity.id)}
+                                title={likedIds.includes(activity.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                              >
+                                <Heart className={`h-5 w-5 ${likedIds.includes(activity.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
                               </Button>
                             </div>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {activity.tags.map((tag, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
+                              <Badge variant="outline" className="text-xs">{activity.category}</Badge>
                             </div>
                             <div className="flex items-center text-sm text-gray-500 mt-2">
                               <Clock className="h-3 w-3 mr-1" />
                               <span>{activity.duration}</span>
                               <span className="mx-1">•</span>
-                              <span>Guía: {activity.guide.name}</span>
+                              <span>Guía: {activity.guide_name}</span>
                               <Star className="h-3 w-3 ml-1 fill-yellow-400 text-yellow-400" />
-                              <span>{activity.guide.rating}</span>
+                              <span>{(activity.rating ?? 0).toFixed(1)}</span>
                             </div>
                             <div className="flex justify-between items-center mt-2">
                               <p className="font-bold">${activity.price.toLocaleString()}</p>
-                              <Link href={`/activity/${activity.id}`}>
+                              <Link href={`/activity-detail?id=${activity.id}`}>
                                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
                                   {t("viewDetails")}
                                 </Button>

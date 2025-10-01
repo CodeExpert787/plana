@@ -13,12 +13,6 @@ export interface PersonalInfo {
   lastName: string
   email: string
   phone: string
-  address: string
-  emergencyContact: {
-    name: string
-    phone: string
-    relationship: string
-  }
 }
 
 interface PersonalInfoFormProps {
@@ -31,13 +25,7 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
-    address: "",
-    emergencyContact: {
-      name: "",
-      phone: "",
-      relationship: "",
-    },
+    phone: "",    
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -50,10 +38,6 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
     if (!formData.email.trim()) newErrors.email = "El email es requerido"
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email inválido"
     if (!formData.phone.trim()) newErrors.phone = "El teléfono es requerido"
-    if (!formData.address.trim()) newErrors.address = "La dirección es requerida"
-    if (!formData.emergencyContact.name.trim()) newErrors.emergencyName = "El contacto de emergencia es requerido"
-    if (!formData.emergencyContact.phone.trim()) newErrors.emergencyPhone = "El teléfono de emergencia es requerido"
-    if (!formData.emergencyContact.relationship.trim()) newErrors.emergencyRelationship = "La relación es requerida"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -71,10 +55,7 @@ export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
       const emergencyField = field.split(".")[1]
       setFormData((prev) => ({
         ...prev,
-        emergencyContact: {
-          ...prev.emergencyContact,
-          [emergencyField]: value,
-        },
+
       }))
     } else {
       setFormData((prev) => ({

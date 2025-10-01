@@ -14,6 +14,7 @@ export interface Guide {
   languages: string[]
   experience_years: number
   certifications: string[]
+  certification_files: string[]
   rating: number
   total_reviews: number
   completed_activities: number

@@ -60,7 +60,6 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <img src="/images/plan-a-logo-binoculars.png" alt="PLAN A Logo" className="h-12 w-auto" />
           </div>
-          <CardTitle className="text-2xl font-bold text-cyan-900">PLAN A</CardTitle>
           <CardDescription>
             {t("welcomeBack") || "Welcome back! Please sign in to your account."}
           </CardDescription>

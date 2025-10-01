@@ -18,13 +18,15 @@ interface ReviewSectionProps {
   activityId?: string
   showReviewForm?: boolean
   maxReviews?: number
+  onSubmitted?: () => void
 }
 
 export function ReviewSection({ 
   guideId, 
   activityId, 
   showReviewForm = true, 
-  maxReviews = 10 
+  maxReviews = 10,
+  onSubmitted
 }: ReviewSectionProps) {
   const { t } = useTranslation("pages")
   const { user } = useAuth()
@@ -48,19 +50,23 @@ export function ReviewSection({
         setLoading(true)
         setError(null)
 
-        // Fetch reviews
-        const reviewsData = await ReviewService.getGuideReviews(guideId)
+        // Fetch reviews (prefer activity-specific when activityId is provided)
+        const reviewsData = activityId
+          ? await ReviewService.getActivityReviews(activityId)
+          : await ReviewService.getGuideReviews(guideId)
         setReviews(reviewsData.slice(0, maxReviews))
 
         // Fetch average rating
-        const { averageRating, totalReviews } = await ReviewService.getGuideAverageRating(guideId)
+        const { averageRating, totalReviews } = await ReviewService.getActivityAverageRating(activityId ?? "")
         setAverageRating(averageRating)
         setTotalReviews(totalReviews)
 
-        // Check if current user has reviewed
+        // Check if current user has reviewed (only when authenticated)
         if (user && activityId) {
           const userHasReviewed = await ReviewService.hasUserReviewedGuide(user.id, guideId, activityId)
           setHasReviewed(userHasReviewed)
+        } else {
+          setHasReviewed(false)
         }
       } catch (err) {
         console.error('Error fetching reviews:', err)
@@ -74,7 +80,7 @@ export function ReviewSection({
   }, [guideId, activityId, user, maxReviews])
 
   const handleSubmitReview = async () => {
-    if (!user || !rating || !comment.trim()) return
+    if (!rating || !comment.trim()) return
 
     try {
       setIsSubmitting(true)
@@ -82,22 +88,32 @@ export function ReviewSection({
 
       const reviewData = {
         guide_id: guideId,
-        user_id: user.id,
-        activity_id: activityId || '',
+        user_id: user?.id,
+        activity_id: activityId || 'general-activity',
         rating,
         comment: comment.trim(),
-        user_name: user.user_metadata?.full_name || user.email || 'Anonymous',
-        user_avatar: user.user_metadata?.avatar_url || ''
+        user_name: (user?.user_metadata?.full_name || user?.email || 'Anonymous') as string,
+        user_avatar: (user?.user_metadata?.avatar_url || '/placeholder-user.jpg') as string,
       }
 
-      await ReviewService.createReview(reviewData)
+      const response = await fetch('/api/submit-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewData })
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result?.error || 'Failed to submit review')
+      }
       
-      // Refresh reviews
-      const reviewsData = await ReviewService.getGuideReviews(guideId)
-      setReviews(reviewsData.slice(0, maxReviews))
+      // Refresh reviews (respect activity filter when provided)
+      const refreshed = activityId
+        ? await ReviewService.getActivityReviews(activityId)
+        : await ReviewService.getGuideReviews(guideId)
+      setReviews(refreshed.slice(0, maxReviews))
       
       // Refresh average rating
-      const { averageRating, totalReviews } = await ReviewService.getGuideAverageRating(guideId)
+      const { averageRating, totalReviews } = await ReviewService.getActivityAverageRating(activityId || "")
       setAverageRating(averageRating)
       setTotalReviews(totalReviews)
       
@@ -105,7 +121,8 @@ export function ReviewSection({
       setRating(0)
       setComment("")
       setShowForm(false)
-      setHasReviewed(true)
+      if (user) setHasReviewed(true)
+      if (onSubmitted) onSubmitted()
       
     } catch (err) {
       console.error('Error submitting review:', err)
@@ -161,10 +178,20 @@ export function ReviewSection({
             <div className="text-sm text-gray-500">{totalReviews} {t("reviews")}</div>
           </div>
         </div>
+        {/* {activityId && (
+          <div className="text-xs text-gray-500">Activity ID: {activityId}</div>
+        )} */}
       </div>
 
+      {/* Already reviewed notice */}
+      {hasReviewed && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-2 rounded text-sm">
+          {t("youAlreadyReviewed")}
+        </div>
+      )}
+
       {/* Review Form */}
-      {showReviewForm && user && !hasReviewed && (
+      {showReviewForm && !hasReviewed && !!activityId && (
         <Card>
           <CardContent className="p-4">
             {!showForm ? (

@@ -16,24 +16,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { useTranslation } from "react-i18next";
 import { ReviewSection } from "@/components/review-section"
+import { UploadService } from "@/lib/upload-service"
 import { GuideService, Guide } from "@/lib/guide-service";
+import { ActivitiesService } from "@/lib/activities-service";
 import "../../i18n-client";
 
 // Lista de categorías de actividades disponibles
 const activityCategories = [
   "Trekking",
   "Escalada",
-  "Montañismo",
-  "Kayak",
-  "Rafting",
+  "Kitesurf",
+  "Deportes lacustres",
   "Pesca",
   "Esquí",
-  "Snowboard",
-  "Bicicleta",
-  "Parapente",
-  "Yoga",
-  "Fotografía",
-  "Observación de aves",
+  "Bicicleta"
 ]
 
 // Lista de ubicaciones en Bariloche
@@ -53,6 +49,9 @@ const locations = [
 // Lista de niveles de dificultad
 const difficultyLevels = ["Principiante", "Intermedio", "Avanzado", "Experto"]
 
+// Lista de temporadas
+const seasons = ["Verano", "Otoño", "Invierno", "Primavera", "Todo el año"]
+
 export default function GuidesPage() {
   const { t } = useTranslation("pages");
   const [searchTerm, setSearchTerm] = useState("")
@@ -68,11 +67,14 @@ export default function GuidesPage() {
   const [activityCategoryOpen, setActivityCategoryOpen] = useState(false);
   const [activityLocationOpen, setActivityLocationOpen] = useState(false);
   const [mainLocationOpen, setMainLocationOpen] = useState(false);
+  const [seasonOpen, setSeasonOpen] = useState(false);
   
   // Guide data state
   const [guides, setGuides] = useState<Guide[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   // New: formData state
   const [formData, setFormData] = useState({
@@ -85,6 +87,7 @@ export default function GuidesPage() {
     experience: "",
     specialties: [] as string[],
     certifications: [] as string[],
+    certificationFiles: [] as string[],
     certificationInput: "",
     activityTitle: "",
     activityCategory: "",
@@ -94,6 +97,7 @@ export default function GuidesPage() {
     activityLocation: "",
     activityDescription: "",
     activityPhotos: [] as string[],
+    activitySeason: "",
   });
 
   // New: file input ref for certification documents
@@ -101,11 +105,22 @@ export default function GuidesPage() {
   const handleButtonClick = () => {
     fileInputRef.current?.click();
   };
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      // Handle the file (e.g., upload to server, show file name, etc.)
-      console.log("Selected file:", file);
+    if (!file) return
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      form.append('folder', 'certifications')
+      const res = await fetch('/api/upload', { method: 'POST', body: form })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Upload failed')
+      setFormData(prev => ({ ...prev, certificationFiles: [...prev.certificationFiles, json.url] }))
+    } catch (e) {
+      console.error('Upload failed:', e)
+      alert(`Error subiendo el archivo: ${(e as Error).message}`)
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   };
 
@@ -147,6 +162,7 @@ export default function GuidesPage() {
     setActivityCategoryOpen(false);
     setActivityLocationOpen(false);
     setMainLocationOpen(false);
+    setSeasonOpen(false);
     setTimeout(() => setFormStep(formStep + 1), 50);
   }
 
@@ -156,12 +172,35 @@ export default function GuidesPage() {
   }
 
   // Función para simular el envío del formulario
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSubmitted(true);
-    // Note: In a real app, this would create a guide via the API
-    // For now, we'll just show success message
-    console.log('Guide registration form submitted:', formData);
+    
+    setIsSubmitting(true);
+    setSubmitError(null);
+    
+    try {
+      // Use the API endpoint to create guide and activity
+      const response = await fetch("/api/register-guide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formData }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('API Error Response:', result);
+        throw new Error(result.error || 'Error creating guide or activity');
+      }
+
+      console.log('Guide and activity created successfully:', result);
+      setFormSubmitted(true);
+    } catch (error) {
+      console.error('Error creating guide or activity:', error);
+      setSubmitError('Error al crear el perfil de guía o la actividad. Por favor, inténtalo de nuevo.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   // Reset formData only if user starts a new registration
@@ -176,6 +215,7 @@ export default function GuidesPage() {
       experience: "",
       specialties: [],
       certifications: [],
+      certificationFiles: [],
       certificationInput: "",
       activityTitle: "",
       activityCategory: "",
@@ -185,11 +225,14 @@ export default function GuidesPage() {
       activityLocation: "",
       activityDescription: "",
       activityPhotos: [],
+      activitySeason: "",
     });
     setProfilePhotoPreview(null);
     setFormStep(1);
     setFormSubmitted(false);
     setActiveTab("register");
+    setSubmitError(null);
+    setIsSubmitting(false);
   };
 
   // Add certification
@@ -248,11 +291,11 @@ export default function GuidesPage() {
         <Link href="/" className="flex items-center gap-2">
           <img src="/images/plan-a-logo-binoculars.png" alt="PLAN A Logo" className="h-8 w-auto" />
         </Link>
-        <Link href="/guide-registration">
+        {/* <Link href="/guide-registration">
           <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
             {t("becomeGuide")}
           </Button>
-        </Link>
+        </Link> */}
       </header>
 
       <div className="p-4">
@@ -328,16 +371,24 @@ export default function GuidesPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredGuides.map((guide) => (
-                <Link href={`/guide-profile?id=${guide.id}&name=${encodeURIComponent(guide.name)}&emoji=${encodeURIComponent(guide.emoji || '🧑‍🦰')}&color=${encodeURIComponent(guide.color || 'bg-emerald-500')}&location=${encodeURIComponent(guide.location)}&experience=${encodeURIComponent(guide.experience || `${guide.experience_years} años`)}&rating=${guide.rating}&reviews=${guide.reviews || guide.total_reviews}&description=${encodeURIComponent(guide.description)}`} key={guide.id}>
+                <Link href={`/guide-profile/${guide.id}`} key={guide.id}>
                   <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
                     <div className="p-4">
                       {/* Modificar el Avatar para mostrar el emoji en lugar de las iniciales */}
                       <div className="flex items-start">
-                        <div
-                          className={`h-16 w-16 rounded-full ${guide.color || 'bg-emerald-500'} flex items-center justify-center text-white text-2xl`}
-                        >
-                          {guide.emoji || '🧑‍🦰'}
-                        </div>
+                        {guide.avatar && guide.avatar !== '/placeholder.svg' ? (
+                          <img
+                            src={guide.avatar}
+                            alt={guide.name}
+                            className="h-16 w-16 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div
+                            className={`h-16 w-16 rounded-full ${guide.color || 'bg-emerald-500'} flex items-center justify-center text-white text-2xl`}
+                          >
+                            {guide.emoji || '🧑‍🦰'}
+                          </div>
+                        )}
                         <div className="ml-3 flex-1">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center">
@@ -396,14 +447,14 @@ export default function GuidesPage() {
                     <circle cx="11" cy="11" r="8" />
                     <path d="m21 21-4.3-4.3" />
                   </svg>
-                </div>
+                 </div>
                 <h3 className="text-lg font-medium text-gray-700">No se encontraron guías</h3>
                 <p className="text-gray-500 mt-1">Intenta con otra búsqueda o filtro</p>
               </div>
             )}
 
             {/* Reviews Section */}
-            {filteredGuides.length > 0 && (
+            {/* {filteredGuides.length > 0 && (
               <div className="mt-8">
                 <h3 className="text-xl font-semibold mb-4">{t("recentReviews")}</h3>
                 <div className="bg-white rounded-lg shadow-sm p-6">
@@ -414,7 +465,7 @@ export default function GuidesPage() {
                   />
                 </div>
               </div>
-            )}
+            )} */}
           </TabsContent>
 
           {/* Contenido de la pestaña para guías */}
@@ -450,6 +501,11 @@ export default function GuidesPage() {
                 </div>
 
                 <form onSubmit={handleSubmit}>
+                  {submitError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-600">{submitError}</p>
+                    </div>
+                  )}
                   {formStep === 1 && (
                     <Card>
                       <CardContent className="p-4 space-y-4">
@@ -530,7 +586,16 @@ export default function GuidesPage() {
                           <Label>{t("specialties")}</Label>
                           <div className="flex flex-wrap gap-2">
                             {activityCategories.slice(0, 8).map((category) => (
-                              <Badge key={category} variant={formData.specialties.includes(category) ? "default" : "outline"} className="cursor-pointer hover:bg-emerald-50" onClick={() => handleToggleSpecialty(category)}>
+                              <Badge 
+                                key={category} 
+                                variant={formData.specialties.includes(category) ? "default" : "outline"} 
+                                className={`cursor-pointer transition-colors ${
+                                  formData.specialties.includes(category) 
+                                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600" 
+                                    : "hover:bg-emerald-50 border-gray-300 text-gray-700"
+                                }`} 
+                                onClick={() => handleToggleSpecialty(category)}
+                              >
                                 {category}
                               </Badge>
                             ))}
@@ -578,6 +643,20 @@ export default function GuidesPage() {
                               <Upload className="h-4 w-4" />
                               {t("uploadFiles")}
                             </Button>
+                            {formData.certificationFiles && formData.certificationFiles.length > 0 && (
+                              <div className="mt-3 text-left">
+                                <div className="text-xs text-gray-500 mb-1">Archivos subidos:</div>
+                                <ul className="space-y-1">
+                                  {formData.certificationFiles.map((url, idx) => (
+                                    <li key={idx} className="text-sm">
+                                      <a href={url} target="_blank" rel="noreferrer" className="text-emerald-700 underline">
+                                        {url.split('/').pop()}
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -614,22 +693,37 @@ export default function GuidesPage() {
                             <Input id="activity-duration" type="number" min="0.5" step="0.5" placeholder="Ej: 4" required value={formData.activityDuration} onChange={e => setFormData({ ...formData, activityDuration: e.target.value })} />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="activity-price">{t("price")}</Label>
-                            <Input id="activity-price" type="number" min="0" placeholder="Ej: 15000" required value={formData.activityPrice} onChange={e => setFormData({ ...formData, activityPrice: e.target.value })} />
+                          <Label htmlFor="activity-price">{t("price")}</Label>
+                          <Input id="activity-price" type="number" min="0" max="99999999.99" step="0.01" placeholder="Ej: 15000" required value={formData.activityPrice} onChange={e => setFormData({ ...formData, activityPrice: e.target.value })} />
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="activity-difficulty">{t("difficulty")}</Label>
-                          <Select open={difficultyOpen} onOpenChange={setDifficultyOpen} value={formData.activityDifficulty} onValueChange={val => setFormData({ ...formData, activityDifficulty: val })} key={formStep + "-difficulty"}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona el nivel" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {difficultyLevels.map((level) => (
-                                <SelectItem key={level} value={level}>{level}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="activity-difficulty">{t("difficulty")}</Label>
+                            <Select open={difficultyOpen} onOpenChange={setDifficultyOpen} value={formData.activityDifficulty} onValueChange={val => setFormData({ ...formData, activityDifficulty: val })} key={formStep + "-difficulty"}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona el nivel" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {difficultyLevels.map((level) => (
+                                  <SelectItem key={level} value={level}>{level}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="activity-season">{t("season")}</Label>
+                            <Select open={seasonOpen} onOpenChange={setSeasonOpen} value={formData.activitySeason} onValueChange={val => setFormData({ ...formData, activitySeason: val })}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona la temporada" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {seasons.map((season) => (
+                                  <SelectItem key={season} value={season}>{season}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="activity-location">{t("location")}</Label>
@@ -761,27 +855,27 @@ export default function GuidesPage() {
                             type="submit"
                             className="bg-emerald-600 hover:bg-emerald-700"
                             disabled={!termsAccepted}
-                            onClick={async () => {
-                              try {
-                                await fetch("/api/notify-admin", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ formData }),
-                                });
-                                await fetch("/api/add-mock-activity", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ formData }),
-                                });
-                              } catch (e) {
-                                console.error("Error notifying admin or saving activity:", e);
-                              }
-                              console.log(formData);
+                          //   onClick={async () => {
+                          //     try {
+                          //       await fetch("/api/notify-admin", {
+                          //         method: "POST",
+                          //         headers: { "Content-Type": "application/json" },
+                          //         body: JSON.stringify({ formData }),
+                          //       });
+                          //       await fetch("/api/add-mock-activity", {
+                          //         method: "POST",
+                          //         headers: { "Content-Type": "application/json" },
+                          //         body: JSON.stringify({ formData }),
+                          //       });
+                          //     } catch (e) {
+                          //       console.error("Error notifying admin or saving activity:", e);
+                          //     }
+                          //     // console.log(formData);
                               
-                            // Do NOT reset formData here, so summary remains
-                          }}
+                          //   // Do NOT reset formData here, so summary remains
+                          // }}
                           >
-                            {t("acceptAndFinish")}
+                            {isSubmitting ? "Guardando..." : t("acceptAndFinish")}
                           </Button>
                         </div>
                       </CardContent>

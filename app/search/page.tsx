@@ -7,15 +7,16 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Star, MapPin, Filter, Search, Clock, Heart, ArrowLeft, ArrowRight, Calendar, X } from "lucide-react"
+import { Star, MapPin, Filter, Search, Clock, Heart, ArrowLeft, ArrowRight, Calendar, X, XCircle, CheckCircle } from "lucide-react"
 import { motion, AnimatePresence, type PanInfo } from "framer-motion"
 import Image from "next/image"
 import { ActivityDetailModal } from "@/components/activity-detail-modal"
 
-import { useLocalizedActivities } from "@/hooks/useLocalizedActivities"
+import { ActivitiesService } from "@/lib/activities-service"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslation } from "react-i18next";
 import "../../i18n-client";
+import { ReviewService } from "@/lib/review-service"
 // Mapear las actividades desde mockActivities
 
 // Remove activities mapping from here
@@ -27,8 +28,8 @@ function ActivitySwipeView({
   setLikedActivities,
 }: {
   activities: any[] // Changed from typeof activities to any[] to avoid type error
-  likedActivities: number[]
-  setLikedActivities: (ids: number[]) => void
+  likedActivities: string[]
+  setLikedActivities: (ids: string[]) => void
 }) {
   const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -38,7 +39,8 @@ function ActivitySwipeView({
   const [showInstructions, setShowInstructions] = useState(true)
   const [dislikedActivities, setDislikedActivities] = useState<number[]>([])
   const [remainingActivities, setRemainingActivities] = useState(activities)
-
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   // Reset activities when the activities prop changes
   useEffect(() => {
     setRemainingActivities(activities)
@@ -109,7 +111,7 @@ function ActivitySwipeView({
   }, [])
 
   const handleBookNow = useCallback(
-    (e: React.MouseEvent, activityId: string | number) => {
+    (e: React.MouseEvent, activityId: string) => {
       e.stopPropagation() // Evitar que el evento se propague al contenedor y active el swipe
       router.push(`/activity-detail?id=${activityId}`)
     },
@@ -143,7 +145,7 @@ function ActivitySwipeView({
   const currentActivity = remainingActivities[currentIndex]
 
   return (
-    <div className="relative h-[70vh] w-full max-w-md mx-auto">
+    <div className="relative h-[700px] w-full max-w-md mx-auto">
       <AnimatePresence>
         {direction === null && currentActivity && (
           <motion.div
@@ -243,69 +245,90 @@ function ActivitySwipeView({
               )}
 
               <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-2xl font-bold">{currentActivity.title}</h2>
-                  <Badge className="bg-emerald-500 hover:bg-emerald-600">
-                    ${currentActivity.price.toLocaleString()}
-                  </Badge>
+                <h2 className="text-2xl font-bold mb-2">{currentActivity.title}</h2>
+
+                {/* Location and duration row to match modal */}
+                <div className="flex items-center justify-between text-sm text-white/90 mb-2">
+                  <div className="flex items-center">
+                    <MapPin size={16} className="mr-1 text-emerald-300" />
+                    <span>{currentActivity.location}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Clock size={16} className="mr-1 text-emerald-300" />
+                    <span>{currentActivity.duration}</span>
+                  </div>
                 </div>
 
-                {/* <div className="flex flex-wrap gap-2 mb-3">
-                  {currentActivity.tags.map((tag: string, index: number) => (
-                    <Badge key={index} variant="outline" className="text-white border-white/50">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div> */}
-
-                {/* <div className="flex items-center mb-3 text-white/90">
-                  <MapPin className="w-4 h-4 mr-1" />
-                  <span>Bariloche, Argentina</span>
-                </div> */}
-
                 <p className="mb-3 text-white/90">{currentActivity.description}</p>
-
-                {/* <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center">
-                    <span className="mr-4">
-                      <span className="font-semibold"> {t("duration")}:</span> {currentActivity.duration}
-                    </span>
-                    <span>
-                      <span className="font-semibold"> {t("difficulty")}:</span> {currentActivity.difficulty}
-                    </span>
+                {/* Incluye box */}
+              <div>
+                <h3 className="font-semibold mb-2">{t("included")}</h3>
+                <div className="bg-transparent rounded-xl xl:p-4 p-2">
+                  <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                    {(currentActivity.included && currentActivity.included.length > 0
+                      ? currentActivity.included
+                      : [
+                          t("specializedGuide"),
+                          t("trekkingPoles", "Bastones"),
+                          t("snowshoes", "Raquetas de nieve"),
+                          t("safetyEquipment", "Equipo de seguridad"),
+                        ]
+                    ).slice(0, 6).map((item: string, index: number) => (
+                      <div key={index} className="flex items-start">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 mr-2 mt-0.5" />
+                        <span className="text-white text-sm">{item}</span>
+                      </div>
+                    ))}
                   </div>
-                </div> */}
-
-                {/* Botón de Reserva */}
-                <Button
-                  className="w-full mt-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2 rounded-lg flex items-center justify-center gap-2"
-                  onClick={(e) => handleBookNow(e, currentActivity.id)}
-                >
-                  <Calendar className="w-4 h-4" />
-                   {t("moreInformation")}
-                </Button>
-
-                <div className="flex items-center mt-4 pt-4 border-t border-white/20">
-                  <div
-                    className={`h-10 w-10 rounded-full ${currentActivity.guide.color} flex items-center justify-center text-white text-xl border-2 border-white`}
-                  >
-                    {currentActivity.guide.emoji}
-                  </div>
-                  <div className="ml-3">
-                    <div className="flex items-center">
-                      <p className="font-medium">{currentActivity.guide.name}</p>
-                      {currentActivity.guide.verified && (
-                        <Badge className="ml-2 bg-blue-500 hover:bg-blue-600 text-xs">{t("verified")}</Badge>
-                      )}
+                </div>
+              </div>
+              {/* Not included box */}
+              {currentActivity.notIncluded.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-2">{t("notIncluded")}</h3>
+                <div className="bg-transparent rounded-xl xl:p-4 p-2">
+                  <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                    {currentActivity.notIncluded.slice(0, 6).map((item: string, index: number) => (
+                      <div key={index} className="flex items-start">
+                        <XCircle className="w-4 h-4 text-red-600 mr-2 mt-0.5" />
+                        <span className="text-white text-sm">{item}</span>
+                      </div>
+                    ))}
                     </div>
+                  </div>
+                </div>
+              )}
+
+                <div className="flex items-center pt-2 xl:pt-4 mt-2 xl:mt-4 border-t border-white/20">
+                  <div className="ml-3">
+                    <div className="flex items-center text-sm xl:text-lg">
+                      <span>{t("guide")}</span>
+                      <span className="mx-1">:</span>
+                      <span>{currentActivity.guide.name}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center pt-2 xl:pt-4 mt-2 xl:mt-4 border-t border-white/20">
+                  
+                  <div className="ml-3">
+              
                     <div className="flex items-center text-sm">
                       <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
                       <span>{currentActivity.guide.rating}</span>
                       <span className="mx-1">•</span>
                       <span>{currentActivity.guide.reviews} {t("reviews")}</span>
                     </div>
+
                   </div>
                 </div>
+                {/* Botón */}
+                <Button
+                  className="w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg"
+                  onClick={(e) => handleBookNow(e, currentActivity.id)}
+                >
+                  {t("moreInformation", "Mas información")}
+                </Button>
               </div>
             </div>
           </motion.div>
@@ -353,8 +376,8 @@ function ActivityGridView({
   onActivityClick,
 }: {
   activities: any[] // Changed from typeof activities to any[] to avoid type error
-  likedActivities: number[]
-  setLikedActivities: (ids: number[]) => void
+  likedActivities: string[]
+  setLikedActivities: (ids: string[]) => void
   onActivityClick: (activity: any) => void
 }) {
   const [showFilters, setShowFilters] = useState(false)
@@ -374,7 +397,7 @@ function ActivityGridView({
 
   // Función para manejar el like/unlike de una actividad
   const toggleLike = useCallback(
-    (activityId: number) => {
+    (activityId: string) => {
       if (likedActivities.includes(activityId)) {
         setLikedActivities(likedActivities.filter((id) => id !== activityId))
       } else {
@@ -566,7 +589,7 @@ function ActivityGridView({
 export default function SearchPage() {
   const { t } = useTranslation("pages");
   const [viewMode, setViewMode] = useState<"grid" | "swipe">("grid")
-  const [likedActivities, setLikedActivities] = useState<number[]>([])
+  const [likedActivities, setLikedActivities] = useState<string[]>([])
   const [selectedActivity, setSelectedActivity] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
@@ -575,12 +598,14 @@ export default function SearchPage() {
   const [people, setPeople] = useState<number>(1)
   const [locationId, setLocationId] = useState<number | null>(null)
   const [locationName, setLocationName] = useState<string>("")
+  const [ratingsByActivity, setRatingsByActivity] = useState<Record<string, { averageRating: number; totalReviews: number }>>({})
 
   const searchParams = useSearchParams()
-  const activitiesData = useLocalizedActivities();
+  const [activitiesData, setActivitiesData] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   // Define Activity type
   type Activity = {
-    id: number;
+    id: string;
     title: string;
     description: string;
     color: string;
@@ -588,11 +613,14 @@ export default function SearchPage() {
     price: number;
     duration: string;
     difficulty: string;
+    location: string;
     category: string;
     categoryKey: string; // Internal category key for consistent filtering
     season: string;
     seasonKey: string; // Internal season key for consistent filtering
     images: string[];
+    included: string[];
+    notIncluded: string[];  
     locationId?: number; // Optional location ID for filtering
     guide: {
       name: string;
@@ -655,19 +683,19 @@ export default function SearchPage() {
     "spring": "spring",
   };
 
-  // Map activities with t inside useMemo
-// Example inside your SearchPage component:
 const activities: Activity[] = useMemo(() =>
   activitiesData.map((activity: any): Activity => {
     // Get the internal category key for consistent filtering
     const categoryKey = categoryMapping[activity.category] || "other";
     // Get the internal season key for consistent filtering
     const seasonKey = seasonMapping[activity.season] || "other";
-    
+    const ratingInfo = ratingsByActivity[activity.id] || { averageRating: 0, totalReviews: 0 }
+
     return {
-      id: Number.parseInt(activity.id),
+      id: activity.id, // Keep as string since database uses TEXT
       title: activity.title,
       description: activity.description,
+      location: activity.location,
       color:
         categoryKey === "skiing"
           ? "bg-sky-500"
@@ -700,7 +728,7 @@ const activities: Activity[] = useMemo(() =>
           : categoryKey === "paragliding"
           ? "🪂"
           : "🏔️",
-      price: typeof activity.price === "number" ? activity.price : Number.parseInt(activity.price),
+      price: typeof activity.price === "number" ? activity.price : Number.parseFloat(activity.price),
       duration: activity.duration,
       difficulty: activity.difficulty,
       category: activity.category,
@@ -708,9 +736,11 @@ const activities: Activity[] = useMemo(() =>
       season: activity.season,
       seasonKey: seasonKey,
       images: activity.images || [activity.image],
+      included: activity.included || [],
+      notIncluded: activity.not_included || [],
       guide: {
-        name: activity.guide.name,
-        initials: activity.guide.name
+        name: activity.guide_name,
+        initials: activity.guide_name
           .split(" ")
           .map((n: string) => n[0])
           .join(""),
@@ -746,14 +776,45 @@ const activities: Activity[] = useMemo(() =>
             : categoryKey === "paragliding"
             ? "bg-purple-500"
             : "bg-gray-500",
-        rating: activity.rating,
-        reviews: Math.floor(Math.random() * 100) + 20,
+        rating:  ratingInfo.averageRating,
+        reviews: ratingInfo.totalReviews, 
         verified: true,
       },
       tags: [activity.category, ...(activity.requirements ? activity.requirements.slice(0, 2) : [])],
     };
   }),
-[activitiesData]);
+[activitiesData, ratingsByActivity]);
+
+  // Fetch ratings for all activities once activitiesData is loaded
+  useEffect(() => {
+    if (!activitiesData || activitiesData.length === 0) return
+    let isCancelled = false
+
+    const fetchAllRatings = async () => {
+      try {
+        const entries = await Promise.all(
+          activitiesData.map(async (activity: any) => {
+            const { averageRating, totalReviews } = await ReviewService.getActivityAverageRating(activity.id)
+            return [activity.id, { averageRating, totalReviews }] as const
+          })
+        )
+
+        if (isCancelled) return
+
+        const map: Record<string, { averageRating: number; totalReviews: number }> = {}
+        for (const [id, info] of entries) {
+          map[id] = info
+        }
+        setRatingsByActivity(map)
+      } catch (err) {
+        console.error('Failed to load activity ratings', err)
+        setRatingsByActivity({})
+      }
+    }
+
+    fetchAllRatings()
+    return () => { isCancelled = true }
+  }, [activitiesData])
 
   // Filtrar actividades según temporada y categoría usando useMemo
   const filteredActivities = useMemo(() => {
@@ -787,9 +848,7 @@ const activities: Activity[] = useMemo(() =>
     const seasonParam = searchParams.get("season")
     const peopleParam = searchParams.get("people")
     const categoriesParam = searchParams.get("categories")
-    const locationParam = searchParams.get("location")
-    const locationNameParam = searchParams.get("locationName")
-
+    console.log("searchParams", viewParam, dateParam, seasonParam, peopleParam, categoriesParam)
     // Handle view mode
     if (viewParam === "swipe") {
       setViewMode("swipe")
@@ -805,7 +864,7 @@ const activities: Activity[] = useMemo(() =>
       const seasonKey = seasonMapping[seasonParam] || seasonParam
       // Map internal key back to display value for state
       const displaySeason = Object.keys(seasonMapping).find(key => seasonMapping[key] === seasonKey) || seasonParam
-      
+      console.log("displaySeason", displaySeason)
       // Map English season names to Spanish for state consistency
       if (displaySeason === "winter") {
         setSeasonFilter("invierno")
@@ -840,19 +899,26 @@ const activities: Activity[] = useMemo(() =>
       setCategoryFilters(mappedCategories)
     }
 
-    // Handle location
-    if (locationParam) {
-      const location = parseInt(locationParam, 10)
-      if (!isNaN(location)) {
-        setLocationId(location)
+  }, [searchParams]) // Add searchParams as dependency
+
+  // Load activities from database
+  useEffect(() => {
+    const loadActivities = async () => {
+      try {
+        setLoading(true)
+        const activities = await ActivitiesService.getAllActivities()
+        console.log('Loaded activities from database:', activities)
+        setActivitiesData(activities)
+      } catch (error) {
+        console.error('Error loading activities:', error)
+        setActivitiesData([])
+      } finally {
+        setLoading(false)
       }
     }
-
-    // Handle location name
-    if (locationNameParam) {
-      setLocationName(decodeURIComponent(locationNameParam))
-    }
-  }, [searchParams]) // Add searchParams as dependency
+    
+    loadActivities()
+  }, [])
 
   // Cargar actividades likeadas desde localStorage al iniciar
   useEffect(() => {
@@ -874,6 +940,7 @@ const activities: Activity[] = useMemo(() =>
 
   // Manejar clic en una actividad
   const handleActivityClick = useCallback((activity: any) => {
+    console.log("Activity clicked:", activity)
     setSelectedActivity(activity)
     setIsModalOpen(true)
   }, [])
@@ -943,7 +1010,7 @@ const activities: Activity[] = useMemo(() =>
       <div className="p-4 flex-1">
         {/* Filtros de temporada */}
         <div className="mb-4">
-          <div className="flex justify-center gap-2 overflow-x-auto pb-2">
+          {/* <div className="flex justify-center gap-2 overflow-x-auto pb-2">
             <Button
               variant={seasonFilter === "all" ? "default" : "outline"}
               size="sm"
@@ -968,10 +1035,10 @@ const activities: Activity[] = useMemo(() =>
             >
               {t("Summer")}
             </Button>
-          </div>
+          </div> */}
 
           {/* Filtros de categoría */}
-          <div className="flex justify-center flex-wrap gap-2 mt-2">
+          {/* <div className="flex justify-center flex-wrap gap-2 mt-2">
             {uniqueCategories.map((category: string) => {
               // Get the category key for this display name
               const categoryKey = categoryMapping[category] || category
@@ -989,7 +1056,7 @@ const activities: Activity[] = useMemo(() =>
                 </Badge>
               )
             })}
-          </div>
+          </div> */}
 
           {/* Mostrar filtros activos */}
           {/* {(seasonFilter !== "all" || categoryFilters.length > 0) && (
@@ -1055,7 +1122,14 @@ const activities: Activity[] = useMemo(() =>
           )} */}
         </div>
 
-        {viewMode === "grid" ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-[60vh]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Cargando actividades...</p>
+            </div>
+          </div>
+        ) : viewMode === "grid" ? (
           <ActivityGridView
             activities={filteredActivities}
             likedActivities={likedActivities}

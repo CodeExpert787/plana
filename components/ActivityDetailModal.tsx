@@ -90,7 +90,7 @@ const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({ activity, chi
           </div>
         </div>
 
-        {showBookingForm && <BookingForm activity={activity} onClose={() => setShowBookingForm(false)} />}
+        {showBookingForm && <BookingForm activity={activity} onSubmit={() => setShowBookingForm(false)} />}
       </SheetContent>
     </Sheet>
   )

@@ -109,31 +109,31 @@ export default function HomePage() {
 
     // Añadir parámetros básicos
     params.append("view", viewMode)
-    if (selectedDate) {
-      params.append("date", selectedDate.toISOString())
-    }
-    params.append("people", people.toString())
+    // if (selectedDate) {
+    //   params.append("date", selectedDate.toISOString())
+    // }
+    // params.append("people", people.toString())
 
-    // Añadir temporada
-    params.append("season", season === "winter" ? t("winter") : t("summer"))
+    // // Añadir temporada
+    // params.append("season", season === "winter" ? t("winter") : t("summer"))
 
-    // Añadir categorías seleccionadas
-    const selectedCategories = []
-    if (trekking) selectedCategories.push(t("trekking"))
-    if (escalada) selectedCategories.push(t("climbing"))
-    if (esqui) selectedCategories.push(t("skiing"))
-    if (bicicleta) selectedCategories.push(t("cycling"))
-    if (kayak) selectedCategories.push(t("kayak"))
-    if (pesca) selectedCategories.push(t("fishing"))
-    if (parapente) selectedCategories.push(t("paragliding"))
+    // // Añadir categorías seleccionadas
+    // const selectedCategories = []
+    // if (trekking) selectedCategories.push(t("trekking"))
+    // if (escalada) selectedCategories.push(t("climbing"))
+    // if (esqui) selectedCategories.push(t("skiing"))
+    // if (bicicleta) selectedCategories.push(t("cycling"))
+    // if (kayak) selectedCategories.push(t("kayak"))
+    // if (pesca) selectedCategories.push(t("fishing"))
+    // if (parapente) selectedCategories.push(t("paragliding"))
 
-    if (selectedCategories.length > 0) {
-      params.append("categories", selectedCategories.join(","))
-    }
+    // if (selectedCategories.length > 0) {
+    //   params.append("categories", selectedCategories.join(","))
+    // }
 
-    // Añadir ubicación seleccionada
-    params.append("location", location.id.toString())
-    params.append("locationName", location.name)
+    // // Añadir ubicación seleccionada
+    // params.append("location", location.id.toString())
+    // params.append("locationName", location.name)
 
     return `/search?${params.toString()}`
   }
@@ -168,11 +168,11 @@ export default function HomePage() {
         </header>
 
         {/* Hero Content */}
-        <div className="relative z-20 text-center text-white px-4 max-w-4xl -mt-16 sm:-mt-8">
-          <div className="flex items-center justify-center mb-24">
-            <img src="/images/plan-a-logo-binoculars.png" alt="PLAN A Logo" className="h-32 w-auto" />
+        <div className="relative z-20 flex flex-col justify-center items-center text-center text-white px-4 max-w-4xl min-h-screen">
+          <div className="flex items-center justify-center xl:mb-24 mb-12">
+            <img src="/images/plan-a-logo-binoculars.png" alt="PLAN A Logo" className="xl:h-32 h-18w-auto" />
           </div>
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+          <h2 className="text-4xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold mb-6 leading-tight">
             {t("findYourNext")}
             <span className="block text-emerald-400">{t("patagonianAdventure")}</span>
           </h2>
@@ -357,7 +357,7 @@ export default function HomePage() {
             {t("joinHundredsOfAdventurersWhoHaveAlreadyDiscoveredTheirNextExperienceWithPlanA")}
           </p>
 
-          <Link href={buildSearchUrl("swipe")} className="inline-block w-full sm:w-auto">
+          <Link href={buildSearchUrl("grid")} className="inline-block w-full sm:w-auto">
             <Button
               size="lg"
               className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-8 sm:px-12 py-4 text-base sm:text-lg"

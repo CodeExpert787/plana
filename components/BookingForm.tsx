@@ -24,7 +24,7 @@ export interface BookingFormData {
   activityId: string
 }
 
-const BookingForm = ({ activity, onSubmit }: BookingFormProps) => {
+const BookingForm = ({ activity, onSubmit }: BookingFormProps ) => {
   const router = useRouter()
   const [date, setDate] = useState<Date>()
   const [participants, setParticipants] = useState(1)

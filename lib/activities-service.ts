@@ -1,201 +1,309 @@
-import { supabase, isSupabaseConfigured } from "./supabase"
-import mockActivities from "@/data/mockActivities"
-import type { Activity } from "@/types"
+import { supabase } from './supabase'
+import { Database } from '@/types/database'
 
-// Función para obtener todas las actividades
-export async function getActivities(): Promise<Activity[]> {
-  if (!isSupabaseConfigured()) {
-    console.log("📦 Usando datos mock - Supabase no configurado")
-    return mockActivities
-  }
+export type Activity = Database['public']['Tables']['activities']['Row']
+export type InsertActivity = Database['public']['Tables']['activities']['Insert']
+export type UpdateActivity = Database['public']['Tables']['activities']['Update']
 
-  try {
-    console.log("🔍 Intentando obtener actividades de Supabase...")
-
-    // Primero intentamos obtener solo las actividades para verificar la conexión
-    const { data: activitiesTest, error: testError } = await supabase!.from("activities").select("id, title").limit(1)
-
-    if (testError) {
-      console.error("❌ Error de conexión básica con Supabase:", testError)
-      console.log("📦 Fallback a datos mock")
-      return mockActivities
-    }
-
-    if (!activitiesTest || activitiesTest.length === 0) {
-      console.warn("⚠️ No hay actividades en la base de datos")
-      console.log("📦 Usando datos mock")
-      return mockActivities
-    }
-
-    // Ahora intentamos la consulta completa con joins
-    const { data: activities, error: activitiesError } = await supabase!.from("activities").select(`
-        *,
-        guides (*)
-      `)
-
-    if (activitiesError) {
-      console.error("❌ Error obteniendo actividades con guías:", activitiesError)
-      console.log("📦 Fallback a datos mock")
-      return mockActivities
-    }
-
-    if (!activities || activities.length === 0) {
-      console.warn("⚠️ No se encontraron actividades")
-      console.log("📦 Usando datos mock")
-      return mockActivities
-    }
-
-    // Convertir datos de Supabase al formato esperado con manejo seguro de nulls
-    const formattedActivities: Activity[] = activities.map((activity) => {
-      // Manejo seguro de los datos del guía
-      const guide = activity.guides || {}
-
-      return {
-        id: activity.id,
-        title: activity.title || "Actividad sin título",
-        description: activity.description || "Sin descripción",
-        price: activity.price || 0,
-        duration: activity.duration || "No especificado",
-        location: activity.location || "Ubicación no especificada",
-        rating: activity.rating || 0,
-        category: activity.category || "General",
-        difficulty: activity.difficulty || "Fácil",
-        included: activity.included || [],
-        notIncluded: activity.not_included || [],
-        requirements: activity.requirements || [],
-        startTimes: activity.start_times || [],
-        images: activity.images || [],
-        guide: {
-          name: guide.name || "Guía no asignado",
-          image: guide.image || "/images/guide-placeholder.png",
-          experience: guide.experience || "Sin experiencia especificada",
-          languages: guide.languages || ["Español"],
-          bio: guide.bio || "Sin biografía disponible",
-          phone: guide.phone || "Sin teléfono",
-        },
+export class ActivitiesService {
+  static async getAllActivities(): Promise<Activity[]> {
+    try {
+      console.log('ActivitiesService: Fetching all activities')
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
       }
-    })
 
-    console.log(`✅ Obtenidas ${formattedActivities.length} actividades de Supabase`)
-    return formattedActivities
-  } catch (error) {
-    console.error("❌ Error conectando con Supabase:", error)
-    console.log("📦 Fallback a datos mock")
-    return mockActivities
-  }
-}
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-// Función para obtener una actividad por ID
-export async function getActivityById(id: string): Promise<Activity | null> {
-  if (!isSupabaseConfigured()) {
-    return mockActivities.find((activity) => activity.id === id) || null
-  }
+      console.log('ActivitiesService: Supabase response:', { data, error })
 
-  try {
-    const { data: activity, error } = await supabase!
-      .from("activities")
-      .select(`
-        *,
-        guides (*)
-      `)
-      .eq("id", id)
-      .single()
+      if (error) {
+        console.error('ActivitiesService: Error fetching activities:', error)
+        throw error
+      }
 
-    if (error) {
-      console.error("❌ Error obteniendo actividad:", error)
-      return mockActivities.find((activity) => activity.id === id) || null
-    }
-
-    if (!activity) {
-      console.warn("⚠️ Actividad no encontrada en Supabase")
-      return mockActivities.find((activity) => activity.id === id) || null
-    }
-
-    // Manejo seguro de los datos del guía
-    const guide = activity.guides || {}
-
-    return {
-      id: activity.id,
-      title: activity.title || "Actividad sin título",
-      description: activity.description || "Sin descripción",
-      price: activity.price || 0,
-      duration: activity.duration || "No especificado",
-      location: activity.location || "Ubicación no especificada",
-      rating: activity.rating || 0,
-      category: activity.category || "General",
-      difficulty: activity.difficulty || "Fácil",
-      included: activity.included || [],
-      notIncluded: activity.not_included || [],
-      requirements: activity.requirements || [],
-      startTimes: activity.start_times || [],
-      images: activity.images || [],
-      guide: {
-        name: guide.name || "Guía no asignado",
-        image: guide.image || "/images/guide-placeholder.png",
-        experience: guide.experience || "Sin experiencia especificada",
-        languages: guide.languages || ["Español"],
-        bio: guide.bio || "Sin biografía disponible",
-        phone: guide.phone || "Sin teléfono",
-      },
-    }
-  } catch (error) {
-    console.error("❌ Error conectando con Supabase:", error)
-    return mockActivities.find((activity) => activity.id === id) || null
-  }
-}
-
-// Función para buscar actividades
-export async function searchActivities(query: string): Promise<Activity[]> {
-  const activities = await getActivities()
-
-  if (!query.trim()) {
-    return activities
-  }
-
-  return activities.filter(
-    (activity) =>
-      activity.title.toLowerCase().includes(query.toLowerCase()) ||
-      activity.description.toLowerCase().includes(query.toLowerCase()) ||
-      activity.category.toLowerCase().includes(query.toLowerCase()) ||
-      activity.location.toLowerCase().includes(query.toLowerCase()),
-  )
-}
-
-// Función para verificar si las tablas existen en Supabase
-export async function checkSupabaseSchema(): Promise<{
-  activitiesTable: boolean
-  guidesTable: boolean
-  hasData: boolean
-  error?: string
-}> {
-  if (!isSupabaseConfigured()) {
-    return {
-      activitiesTable: false,
-      guidesTable: false,
-      hasData: false,
-      error: "Supabase no configurado",
+      console.log('ActivitiesService: Activities fetched successfully:', data?.length || 0, 'activities')
+      return data || []
+    } catch (error) {
+      console.error('ActivitiesService: Error fetching activities:', error)
+      throw error
     }
   }
 
-  try {
-    // Verificar tabla de actividades
-    const { data: activitiesData, error: activitiesError } = await supabase!.from("activities").select("id").limit(1)
+  static async getActivityById(id: string): Promise<Activity | null> {
+    try {
+      console.log('ActivitiesService: Fetching activity by id:', id)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
 
-    // Verificar tabla de guías
-    const { data: guidesData, error: guidesError } = await supabase!.from("guides").select("id").limit(1)
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('id', id)
+        .single()
 
-    return {
-      activitiesTable: !activitiesError,
-      guidesTable: !guidesError,
-      hasData: (activitiesData && activitiesData.length > 0) || false,
-      error: activitiesError?.message || guidesError?.message,
+      console.log('ActivitiesService: Supabase response:', { data, error })
+
+      if (error) {
+        console.error('ActivitiesService: Error fetching activity:', error)
+        throw error
+      }
+
+      console.log('ActivitiesService: Activity fetched successfully:', data)
+      return data
+    } catch (error) {
+      console.error('ActivitiesService: Error fetching activity:', error)
+      throw error
     }
-  } catch (error) {
-    return {
-      activitiesTable: false,
-      guidesTable: false,
-      hasData: false,
-      error: `Error de conexión: ${error}`,
+  }
+
+  static async getActivitiesByGuideId(guideId: string): Promise<Activity[]> {
+    try {
+      console.log('ActivitiesService: Fetching activities for guide:', guideId)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      // First, get the guide to find the guide's name
+      const { data: guideData, error: guideError } = await supabase
+        .from('guides')
+        .select('name')
+        .eq('id', guideId)
+        .single()
+
+      if (guideError) {
+        console.error('ActivitiesService: Error fetching guide name:', guideError)
+        throw guideError
+      }
+
+      if (!guideData) {
+        console.log('ActivitiesService: Guide not found')
+        return []
+      }
+
+      // Now find activities by guide name
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('guide_name', guideData.name)
+        .order('created_at', { ascending: false })
+
+      console.log('ActivitiesService: Get activities by guide response:', { data, error })
+
+      if (error) {
+        console.error('ActivitiesService: Error fetching activities by guide:', error)
+        throw error
+      }
+
+      console.log('ActivitiesService: Activities found for guide:', data?.length || 0)
+      return data || []
+    } catch (error) {
+      console.error('ActivitiesService: Error fetching activities by guide:', error)
+      throw error
+    }
+  }
+
+  static async getActivitiesByCategory(category: string): Promise<Activity[]> {
+    try {
+      console.log('ActivitiesService: Fetching activities by category:', category)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('category', category)
+        .order('created_at', { ascending: false })
+
+      console.log('ActivitiesService: Supabase response:', { data, error })
+
+      if (error) {
+        console.error('ActivitiesService: Error fetching activities by category:', error)
+        throw error
+      }
+
+      console.log('ActivitiesService: Activities by category fetched successfully:', data?.length || 0, 'activities')
+      return data || []
+    } catch (error) {
+      console.error('ActivitiesService: Error fetching activities by category:', error)
+      throw error
+    }
+  }
+
+  static async getActivitiesBySeason(season: string): Promise<Activity[]> {
+    try {
+      console.log('ActivitiesService: Fetching activities by season:', season)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('season', season)
+        .order('created_at', { ascending: false })
+
+      console.log('ActivitiesService: Supabase response:', { data, error })
+
+      if (error) {
+        console.error('ActivitiesService: Error fetching activities by season:', error)
+        throw error
+      }
+
+      console.log('ActivitiesService: Activities by season fetched successfully:', data?.length || 0, 'activities')
+      return data || []
+    } catch (error) {
+      console.error('ActivitiesService: Error fetching activities by season:', error)
+      throw error
+    }
+  }
+
+  static async getActivitiesByIds(ids: string[]): Promise<Activity[]> {
+    try {
+      if (!ids || ids.length === 0) return []
+
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .in('id', ids)
+
+      if (error) {
+        throw error
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('ActivitiesService: Error fetching activities by IDs:', error)
+      throw error
+    }
+  }
+
+  static async searchActivities(searchTerm: string): Promise<Activity[]> {
+    try {
+      console.log('ActivitiesService: Searching activities with term:', searchTerm)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`)
+        .order('created_at', { ascending: false })
+
+      console.log('ActivitiesService: Supabase response:', { data, error })
+
+      if (error) {
+        console.error('ActivitiesService: Error searching activities:', error)
+        throw error
+      }
+
+      console.log('ActivitiesService: Activities search completed:', data?.length || 0, 'activities')
+      return data || []
+    } catch (error) {
+      console.error('ActivitiesService: Error searching activities:', error)
+      throw error
+    }
+  }
+
+  static async createActivity(activityData: InsertActivity): Promise<Activity> {
+    try {
+      console.log('ActivitiesService: Creating activity with data:', activityData)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { data, error } = await supabase
+        .from('activities')
+        .insert(activityData)
+        .select()
+        .single()
+
+      console.log('ActivitiesService: Create activity response:', { data, error })
+
+      if (error) {
+        console.error('ActivitiesService: Error creating activity:', error)
+        throw error
+      }
+
+      console.log('ActivitiesService: Activity created successfully:', data)
+      return data
+    } catch (error) {
+      console.error('ActivitiesService: Error creating activity:', error)
+      throw error
+    }
+  }
+
+  static async updateActivity(id: string, activityData: UpdateActivity): Promise<Activity> {
+    try {
+      console.log('ActivitiesService: Updating activity with id:', id, 'data:', activityData)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { data, error } = await supabase
+        .from('activities')
+        .update(activityData)
+        .eq('id', id)
+        .select()
+        .single()
+
+      console.log('ActivitiesService: Update activity response:', { data, error })
+
+      if (error) {
+        console.error('ActivitiesService: Error updating activity:', error)
+        throw error
+      }
+
+      console.log('ActivitiesService: Activity updated successfully:', data)
+      return data
+    } catch (error) {
+      console.error('ActivitiesService: Error updating activity:', error)
+      throw error
+    }
+  }
+
+  static async deleteActivity(id: string): Promise<void> {
+    try {
+      console.log('ActivitiesService: Deleting activity with id:', id)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      const { error } = await supabase
+        .from('activities')
+        .delete()
+        .eq('id', id)
+
+      console.log('ActivitiesService: Delete activity response:', { error })
+
+      if (error) {
+        console.error('ActivitiesService: Error deleting activity:', error)
+        throw error
+      }
+
+      console.log('ActivitiesService: Activity deleted successfully')
+    } catch (error) {
+      console.error('ActivitiesService: Error deleting activity:', error)
+      throw error
     }
   }
 }

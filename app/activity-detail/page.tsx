@@ -1,215 +1,188 @@
 "use client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Star, MapPin, Clock, BarChart, Users, Calendar, MessageCircle } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { Star, MapPin, Clock, CheckCircle2 } from "lucide-react"
 import { useTranslation } from "react-i18next";
 import "../../i18n-client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useLocalizedActivities } from "@/hooks/useLocalizedActivities";
+import { useEffect, useState } from "react";
+import { ActivitiesService, Activity as DBActivity } from "@/lib/activities-service";
 import { ReviewSection } from "@/components/review-section"
-import { ReviewTroubleshooting } from "@/components/review-troubleshooting";
+import { ReviewService } from "@/lib/review-service"
 export default function ActivityDetailPage() {
   const { t } = useTranslation("pages");
   const router = useRouter()
   const searchParams = useSearchParams()
   const activityId = searchParams.get("id") || ""
-  const activities = useLocalizedActivities()
-  const activity = activities.find((a) => String(a.id) === String(activityId))
+  const [activity, setActivity] = useState<DBActivity | null>(null)
+  const [averageRating, setAverageRating] = useState(0)
+  const [totalReviews, setTotalReviews] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  useEffect(() => {
+    const loadActivity = async () => {
+      if (!activityId) return
+      try {
+        const data = await ActivitiesService.getActivityById(activityId)
+        setActivity(data)
+      } catch (err) {
+        console.error('Failed to load activity', err)
+        setActivity(null)
+      }
+    }
+    loadActivity()
+  }, [activityId])
 
+  const refreshActivity = async () => {
+    try {
+      if (!activityId) return
+      const data = await ActivitiesService.getActivityById(activityId)
+      setActivity(data)
+    } catch (err) {
+      console.error('Failed to refresh activity', err)
+    }
+  }
+  // Fetch reviews and rating data
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+
+        // Fetch average rating
+        const { averageRating, totalReviews } = await ReviewService.getActivityAverageRating(activityId)
+        setAverageRating(averageRating)
+        setTotalReviews(totalReviews)
+        
+      } catch (err) {
+        console.error('Error fetching reviews:', err)
+        setError('Error loading reviews')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchReviews()
+  }, [activityId])
   const handleBookNow = () => {
     if (!activityId) return
-    router.push(`/booking/${activityId}/steps`)
-  }
-
-  const handleWhatsAppContact = () => {
-    const activityTitle = activity?.title || t("trekkingTitle")
-    const activityLocation = activity?.location || t("location")
-    const activityPrice = activity?.price || t("price")
-    
-    // WhatsApp message with activity details
-    const message = encodeURIComponent(
-      `¡Hola! Me interesa saber más sobre la actividad "${activityTitle}" en ${activityLocation}. Precio: $${activityPrice}. ¿Podrías darme más información?`
-    )
-    
-    // Replace with your actual WhatsApp number (with country code, no + sign)
-    const whatsappNumber = "54294433050" // Example: Argentina number
-    
-    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`
-    window.open(whatsappUrl, '_blank')
+    router.push(`/activity-detail?id=${activityId}&bookNow=true`)
   }
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-sky-50">
-      {/* Back Button */}
-      <button 
-        type="button" 
-        onClick={() => router.back()} 
-        className="absolute z-50 top-4 left-4 p-2 rounded-full bg-black/20 text-white"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="m15 18-6-6 6-6" />
-        </svg>
-      </button>
-
-      {/* Main Content - 2 Column Layout */}
-      <div className="flex min-h-screen">
-        {/* Left Column - Content */}
-        <div className="flex-1 p-6 space-y-6">
-          {/* Row 1: Category and Location */}
-          <div className="space-y-2">
-            <Badge className="bg-emerald-500 hover:bg-emerald-600">{activity?.category || t("trekking")}</Badge>
-            <h1 className="text-3xl font-bold text-gray-900">{activity?.title || t("trekkingTitle")}</h1>
-            <div className="flex items-center text-gray-600">
-              <MapPin className="w-5 h-5 mr-2" />
-              <span className="text-lg">{activity?.location || t("location")}</span>
+    <div className="min-h-screen bg-gray-50 p-10">
+      {/* Hero Image */}
+      <div className="relative">
+        <button type="button" onClick={() => router.back()} className="absolute top-4 left-4 p-2 rounded-full bg-black/20 text-white">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
+      </div>
+      <div className="relative max-w-5xl mx-auto h-[380px]">
+        
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${activity?.images?.[0] || activity?.image || "/placeholder.svg?height=900&width=1200"})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        <div className="relative z-10 max-w-5xl mx-auto px-4 h-full flex items-start pt-8 pl-8">
+          <div>
+            <h1 className="text-white text-2xl xl:text-5xl font-extrabold drop-shadow">
+              {activity?.title || t("trekkingTitle")}
+            </h1>
+            <div className="mt-3 flex flex-col xl:flex-row items-start xl:items-center text-white/90 xl:space-x-4">
+              <div className="flex items-start xl:items-center py-2 xl:py-0">
+                <MapPin className="w-5 h-5 mr-2" />
+                <span className="text-sm xl:text-lg">{activity?.location || t("location")}</span>
+              </div>
+              <span className="hidden xl:block xl:inline">•</span>
+              <div className="flex items-start xl:items-center py-2 xl:py-0">
+                <Clock className="w-5 h-5 mr-2" />
+                <span className="text-sm xl:text-lg">{activity?.duration || t("durationValue")}</span>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Row 2: Review, Duration, Difficulty */}
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center">
-              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-              <span className="ml-2 font-medium text-lg">4.8</span>
-              <span className="mx-2 text-gray-400">•</span>
-              <span className="text-gray-600">{t("reviews")}</span>
-            </div>
-            <div className="flex items-center">
-              <Clock className="w-5 h-5 text-emerald-600 mr-2" />
-              <span className="font-medium">{activity?.duration || t("durationValue")}</span>
-            </div>
-            <div className="flex items-center">
-              <BarChart className="w-5 h-5 text-emerald-600 mr-2" />
-              <span className="font-medium">{activity?.difficulty || t("difficultyValue")}</span>
-            </div>
-          </div>
+      {/* Content */}
+      <div className="max-w-5xl mx-auto pb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Left: description + includes */}
+          <Card className="md:col-span-2 p-6 md:p-8">
 
-          {/* Row 3: Description and Includes - 2 columns */}
-          <div className="grid grid-cols-2 gap-6">
-            {/* Description Column */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold">{t("description")}</h3>
-              <div className="space-y-3">
-                <p className="text-gray-600">{activity?.description || t("descriptionValue")}</p>
-                <p className="text-gray-600">{t("descriptionValue2")}</p>
-                <div>
-                  <h4 className="font-semibold mb-2">{t("itinerary")}</h4>
-                  <ul className="list-disc pl-5 text-gray-600 space-y-1">
-                    <li>{t("itineraryItem1")}</li>
-                    <li>{t("itineraryItem2")}</li>
-                    <li>{t("itineraryItem3")}</li>
-                    <li>{t("itineraryItem4")}</li>
-                    <li>{t("itineraryItem5")}</li>
-                    <li>{t("itineraryItem6")}</li>
-                  </ul>
+            <h3 className="mt-4 text-xl font-semibold">{t("description")}</h3>
+            <p className="mt-2 text-gray-700 leading-relaxed">
+              {activity?.description || t("descriptionValue")}
+            </p>
+
+            <h3 className="mt-6 text-xl font-semibold">{t("includes")}</h3>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {[t("includesItem1"), t("includesItem2"), t("includesItem3"), t("includesItem4")]
+                .filter(Boolean)
+                .map((text, idx) => (
+                  <div key={idx} className="flex items-start text-gray-700">
+                    <CheckCircle2 className="mt-0.5 mr-2 w-5 h-5 text-emerald-600" />
+                    <span>{text as string}</span>
+                  </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Right: guide + price */}
+          <Card className="p-6 md:p-8 space-y-6">
+            <div>
+              <h4 className="text-sm uppercase tracking-wide text-gray-500">{t("guide") || "Guía"}</h4>
+              <div className="mt-3 flex items-center">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={(activity as any)?.guide_avatar || "/placeholder-user.jpg"} alt="guide" />
+                  <AvatarFallback>G</AvatarFallback>
+                </Avatar>
+                <div className="ml-3">
+                  <div className="font-semibold">{(activity as any)?.guide_name || "Guía profesional"}</div>
+                  <div className="text-sm text-gray-600"> Guía local con más de {(activity as any)?.guide_experience} de experiencia</div>
                 </div>
               </div>
             </div>
 
-            {/* Includes Column */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold">{t("includes")}</h3>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-semibold text-green-700 mb-2">{t("includes")}</h4>
-                  <ul className="list-disc pl-5 text-gray-600 space-y-1">
-                    <li>{t("includesItem1")}</li>
-                    <li>{t("includesItem2")}</li>
-                    <li>{t("includesItem3")}</li>
-                    <li>{t("includesItem4")}</li>
-                    <li>{t("includesItem5")}</li>
-                  </ul>
-                </div>
+            
+          </Card>
+        </div>
 
-                <div>
-                  <h4 className="font-semibold text-red-700 mb-2">{t("notIncludes")}</h4>
-                  <ul className="list-disc pl-5 text-gray-600 space-y-1">
-                    <li>{t("notIncludesItem1")}</li>
-                    <li>{t("notIncludesItem2")}</li>
-                    <li>{t("notIncludesItem3")}</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-blue-700 mb-2">{t("whatToBring")}</h4>
-                  <ul className="list-disc pl-5 text-gray-600 space-y-1">
-                    <li>{t("whatToBringItem1")}</li>
-                    <li>{t("whatToBringItem2")}</li>
-                    <li>{t("whatToBringItem3")}</li>
-                    <li>{t("whatToBringItem4")}</li>
-                    <li>{t("whatToBringItem5")}</li>
-                    <li>{t("whatToBringItem6")}</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+        {/* Price + Reviews row */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+          <div className="p-6 md:p-8 border rounded-lg h-full flex flex-col">
+            <div className="text-gray-500 text-sm">USD</div>
+            <div className="text-3xl font-bold text-gray-900">{activity?.price ? `USD ${activity.price}` : t("price")}</div>
+            <div className="text-sm text-gray-500">{t("pricePerPerson") || "por persona"}</div>
+            <Button onClick={handleBookNow} className="mt-auto bg-emerald-600 hover:bg-emerald-700 h-11 text-base w-full">
+              {t("bookNow")}
+            </Button>
           </div>
-
-          {/* Row 4: Reviews */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <Card className="p-6 md:p-8 h-full">
             <h3 className="text-xl font-semibold mb-4">{t("reviews")}</h3>
             <ReviewSection 
               guideId="1"
               activityId={activityId}
               showReviewForm={true}
               maxReviews={5}
+              onSubmitted={refreshActivity}
             />
-          </div>
-
-          {/* Troubleshooting Section - Only show if there are issues */}
-          {/* <div className="mt-6">
-            <ReviewTroubleshooting />
-          </div> */}
-
-          {/* Row 5: Price, Contact, Book Now */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <span className="text-sm text-gray-500">{t("pricePerPerson")}</span>
-                <div className="text-3xl font-bold text-emerald-600">{activity ? `$${activity.price}` : t("price")}</div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Button 
-                variant="outline" 
-                className="flex items-center justify-center h-12 text-lg" 
-                onClick={handleWhatsAppContact}
-              >
-                <MessageCircle className="w-5 h-5 mr-2" />
-                {t("contact")}
-              </Button>
-              <Button 
-                onClick={handleBookNow} 
-                className="bg-emerald-600 hover:bg-emerald-700 h-12 text-lg"
-              >
-                {t("bookNow")}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column - Image */}
-        <div className="w-1/2 relative">
-          <div
-            className="h-full bg-cover bg-center sticky top-0"
-            style={{ backgroundImage: `url(${activity?.images?.[0] || activity?.image || "/placeholder.svg?height=800&width=600"})` }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-          </div>
+          </Card>
         </div>
       </div>
+      
     </div>
+    
   )
 }

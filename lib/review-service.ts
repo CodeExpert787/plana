@@ -83,11 +83,17 @@ export class ReviewService {
         throw new Error('Supabase client not initialized')
       }
 
+      // Use the create_review function to bypass RLS
       const { data, error } = await supabase
-        .from('reviews')
-        .insert(reviewData)
-        .select()
-        .single()
+        .rpc('create_review', {
+          p_guide_id: reviewData.guide_id,
+          p_user_id: reviewData.user_id,
+          p_activity_id: reviewData.activity_id,
+          p_rating: reviewData.rating,
+          p_comment: reviewData.comment,
+          p_user_name: reviewData.user_name,
+          p_user_avatar: reviewData.user_avatar || '/placeholder-user.jpg'
+        })
 
       console.log('ReviewService: Create review response:', { data, error })
 
@@ -96,8 +102,14 @@ export class ReviewService {
         throw error
       }
 
-      console.log('ReviewService: Review created successfully:', data)
-      return data
+      // The function returns an array, so we need to get the first element
+      const review = data && data.length > 0 ? data[0] : null
+      if (!review) {
+        throw new Error('No review data returned from function')
+      }
+
+      console.log('ReviewService: Review created successfully:', review)
+      return review
     } catch (error) {
       console.error('ReviewService: Error creating review:', error)
       throw error
@@ -171,11 +183,16 @@ export class ReviewService {
     }
   }
 
-  // Get average rating for a guide
-  static async getGuideAverageRating(guideId: string): Promise<{ averageRating: number; totalReviews: number }> {
+  // Get average rating for a activity
+  static async getActivityAverageRating(activityId: string): Promise<{ averageRating: number; totalReviews: number }> {
     try {
-      console.log('ReviewService: Getting average rating for guide ID:', guideId)
+      console.log('ReviewService: Getting average rating for activity ID:', activityId)
       
+      // Guard against empty/invalid activityId to avoid Supabase UUID casting errors
+      if (!activityId) {
+        return { averageRating: 0, totalReviews: 0 }
+      }
+
       if (!supabase) {
         throw new Error('Supabase client not initialized')
       }
@@ -183,7 +200,7 @@ export class ReviewService {
       const { data, error } = await supabase
         .from('reviews')
         .select('rating')
-        .eq('guide_id', guideId)
+        .eq('activity_id', activityId)
 
       console.log('ReviewService: Supabase response:', { data, error })
 
@@ -237,6 +254,60 @@ export class ReviewService {
       return hasReviewed
     } catch (error) {
       console.error('ReviewService: Error checking if user reviewed:', error)
+      throw error
+    }
+  }
+
+  // Update guide rating and total reviews after review submission
+  static async updateGuideAfterReview(guideId: string): Promise<void> {
+    try {
+      console.log('ReviewService: Updating guide after review submission:', guideId)
+      
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
+      // Get all reviews for this guide to calculate new average
+      const { data: reviews, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('guide_id', guideId)
+
+      if (reviewsError) {
+        console.error('ReviewService: Error fetching reviews for guide update:', reviewsError)
+        throw reviewsError
+      }
+
+      if (!reviews || reviews.length === 0) {
+        console.log('ReviewService: No reviews found for guide')
+        return
+      }
+
+      // Calculate new average rating
+      const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0)
+      const averageRating = totalRating / reviews.length
+      const totalReviews = reviews.length
+
+      console.log('ReviewService: Calculated new rating:', { averageRating, totalReviews })
+
+      // Update the guide with new rating and total reviews
+      const { error: updateError } = await supabase
+        .from('guides')
+        .update({
+          rating: averageRating,
+          total_reviews: totalReviews,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', guideId)
+
+      if (updateError) {
+        console.error('ReviewService: Error updating guide:', updateError)
+        throw updateError
+      }
+
+      console.log('ReviewService: Guide updated successfully with new rating and review count')
+    } catch (error) {
+      console.error('ReviewService: Error updating guide after review:', error)
       throw error
     }
   }

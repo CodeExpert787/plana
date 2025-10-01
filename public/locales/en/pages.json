@@ -503,5 +503,6 @@
   "submitReview": "Submit Review",
   "noReviewsYet": "No reviews yet",
   "recentReviews": "Recent Reviews",
-  "becomeGuide": "Become a Guide"
+  "becomeGuide": "Become a Guide",
+  "youAlreadyReviewed": "You already reviewed this activity."
 } 

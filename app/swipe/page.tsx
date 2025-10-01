@@ -7,6 +7,7 @@ import mockActivities from "@/data/mockActivities"
 import Image from "next/image"
 import { useTranslation } from "react-i18next";
 import "../../i18n-client";
+import { Activity } from "@/types";
 
 export default function SwipePage() {
   const router = useRouter()
@@ -20,7 +21,7 @@ export default function SwipePage() {
   const dateParam = searchParams.get("date")
   const selectedDate = dateParam ? new Date(dateParam) : undefined
 
-  const currentActivity = activities[currentIndex]
+  const currentActivity = activities[currentIndex] as Activity
 
   // Función para manejar el swipe a la izquierda (siguiente)
   const handleNext = () => {
@@ -181,9 +182,7 @@ export default function SwipePage() {
       {/* Modal de detalles */}
       <ActivityDetailModal
         activity={currentActivity}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        selectedDate={selectedDate}
+        children={<button onClick={handleOpenDetails}>{t("viewDetails")}</button>}
       />
     </div>
   )
