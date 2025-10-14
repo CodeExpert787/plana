@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Check, Calendar, Clock, MapPin, Share2, Download, ChevronRight, ArrowLeft } from "lucide-react"
-import mockActivities from "@/data/mockActivities"
+import { ActivitiesService } from "@/lib/activities-service"
 
 export default function BookingDetailPage({
   params,
@@ -19,85 +19,67 @@ export default function BookingDetailPage({
   // Obtener parámetros de la URL
   const dateParam = searchParams.date as string
   const participantsParam = searchParams.participants as string
+  // Form data (enviado desde activity-detail)
+  const firstNameParam = (searchParams.firstName as string) || ""
+  const lastNameParam = (searchParams.lastName as string) || ""
+  const contactNumberParam = (searchParams.contactNumber as string) || ""
+  const emailParam = (searchParams.email as string) || ""
   const participants = participantsParam ? Number.parseInt(participantsParam) : 2
 
-  // Simular carga de datos
+  // Cargar datos reales desde la base de datos
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // Buscar la actividad en los datos simulados
-      const activity = mockActivities.find((act) => act.id === params.id)
+    const load = async () => {
+      try {
+        setIsLoading(true)
+        const activity = await ActivitiesService.getActivityById(params.id)
 
-      if (activity) {
-        // Datos de ejemplo para la reserva
-        setBookingData({
-          id: params.id,
-          status: "confirmed",
-          date: dateParam
-            ? new Date(dateParam).toLocaleDateString()
-            : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-          time: activity.startTimes ? activity.startTimes[0] : "09:00",
-          activity: {
-            title: activity.title,
-            image: activity.image,
-            price: activity.price,
-            duration: activity.duration,
-            location: activity.location,
-            meetingPoint: `Punto de encuentro en ${activity.location}`,
-          },
-          guide: {
-            name: activity.guide.name,
-            phone: "+54 9 294 123-4567",
-            email: `${activity.guide.name.toLowerCase().replace(" ", ".")}@plana.com`,
-          },
-          participants: participants,
-          totalPrice: activity.price * participants,
-          bookingDate: new Date().toLocaleDateString(),
-          paymentMethod: "Tarjeta de crédito",
-          confirmationCode:
-            "PLAN-" +
-            Math.floor(Math.random() * 10000)
-              .toString()
-              .padStart(4, "0"),
-        })
-      } else {
-        // Datos genéricos si no se encuentra la actividad
-        setBookingData({
-          id: params.id,
-          status: "confirmed",
-          date: dateParam
-            ? new Date(dateParam).toLocaleDateString()
-            : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-          time: "09:00",
-          activity: {
-            title: "Actividad en Bariloche",
-            image: "/images/bariloche-vista-panoramica.jpeg",
-            price: 12000,
-            duration: "3 horas",
-            location: "Bariloche, Río Negro",
-            meetingPoint: "Centro de visitantes, Bariloche",
-          },
-          guide: {
-            name: "Guía Local",
-            phone: "+54 9 294 123-4567",
-            email: "guia@plana.com",
-          },
-          participants: participants,
-          totalPrice: 12000 * participants,
-          bookingDate: new Date().toLocaleDateString(),
-          paymentMethod: "Tarjeta de crédito",
-          confirmationCode:
-            "PLAN-" +
-            Math.floor(Math.random() * 10000)
-              .toString()
-              .padStart(4, "0"),
-        })
+        if (activity) {
+          setBookingData({
+            id: params.id,
+            status: "confirmed",
+            date: dateParam
+              ? new Date(dateParam).toLocaleDateString()
+              : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+            time: Array.isArray(activity.start_times) && activity.start_times.length > 0 ? activity.start_times[0] : "09:00",
+            activity: {
+              title: activity.title,
+              image: activity.image,
+              price: activity.price,
+              duration: activity.duration,
+              location: activity.location,
+              meetingPoint: `Punto de encuentro en ${activity.location}`,
+            },
+            guide: {
+              name: activity.guide_name,
+              phone: activity.guide_phone || "+54 9 294 123-4567",
+              email: "guia@plana.com",
+            },
+            participants: participants,
+            totalPrice: activity.price * participants,
+            bookingDate: new Date().toLocaleDateString(),
+            paymentMethod: "Tarjeta de crédito",
+            confirmationCode:
+              "PLAN-" +
+              Math.floor(Math.random() * 10000)
+                .toString()
+                .padStart(4, "0"),
+            customer: {
+              firstName: firstNameParam,
+              lastName: lastNameParam,
+              contactNumber: contactNumberParam,
+              email: emailParam,
+            },
+          })
+        } else {
+          setBookingData(null)
+        }
+      } finally {
+        setIsLoading(false)
       }
+    }
 
-      setIsLoading(false)
-    }, 1500)
-
-    return () => clearTimeout(timer)
-  }, [params.id, dateParam, participantsParam, participants])
+    load()
+  }, [params.id, dateParam, participantsParam, participants, firstNameParam, lastNameParam, contactNumberParam, emailParam])
 
   if (isLoading) {
     return (

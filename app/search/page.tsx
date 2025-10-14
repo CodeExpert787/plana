@@ -37,15 +37,29 @@ function ActivitySwipeView({
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null)
   const [exitX, setExitX] = useState<number>(0)
   const [showInstructions, setShowInstructions] = useState(true)
-  const [dislikedActivities, setDislikedActivities] = useState<number[]>([])
+  const [dislikedActivityIds, setDislikedActivityIds] = useState<string[]>([])
   const [remainingActivities, setRemainingActivities] = useState(activities)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  // Reset activities when the activities prop changes
+  // Load disliked (discarded) activities from localStorage once
   useEffect(() => {
-    setRemainingActivities(activities)
+    try {
+      const saved = localStorage.getItem('dislikedActivities')
+      if (saved) {
+        const ids = JSON.parse(saved)
+        if (Array.isArray(ids)) setDislikedActivityIds(ids)
+      }
+    } catch (e) {
+      console.warn('Failed to parse dislikedActivities from localStorage')
+    }
+  }, [])
+
+  // Reset and filter swipe deck whenever inputs change
+  useEffect(() => {
+    const filtered = activities.filter((a: any) => !likedActivities.includes(a.id) && !dislikedActivityIds.includes(a.id))
+    setRemainingActivities(filtered)
     setCurrentIndex(0)
-  }, [activities]) // Only depend on length to avoid infinite loops
+  }, [activities, likedActivities, dislikedActivityIds])
 
   // Ocultar las instrucciones después de 5 segundos
   useEffect(() => {
@@ -71,7 +85,13 @@ function ActivitySwipeView({
         }
         setLikedActivities(newLikedActivities)
       } else if (dir === "left") {
-        setDislikedActivities([...dislikedActivities, remainingActivities[currentIndex].id])
+        setDislikedActivityIds(prev => {
+          const next = prev.includes(remainingActivities[currentIndex].id)
+            ? prev
+            : [...prev, remainingActivities[currentIndex].id]
+          localStorage.setItem('dislikedActivities', JSON.stringify(next))
+          return next
+        })
       }
 
       // Simular un pequeño retraso para la animación
@@ -85,7 +105,7 @@ function ActivitySwipeView({
         setDirection(null)
       }, 300)
     },
-    [currentIndex, remainingActivities, likedActivities, setLikedActivities, dislikedActivities],
+    [currentIndex, remainingActivities, likedActivities, setLikedActivities],
   )
 
   const handleDragEnd = useCallback(

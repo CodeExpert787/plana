@@ -3,12 +3,15 @@
 import { CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 import { useSearchParams } from "next/navigation"
+import { ActivitiesService } from "@/lib/activities-service"
 import { Button } from "@/components/ui/button"
 import { useTranslation } from "react-i18next";
 import "../../../i18n-client";
 export default function ConfirmationPage() {
   const searchParams = useSearchParams()
   const bookingData = searchParams.get("bookingData")
+  const [parsedBookingData, setParsedBookingData] = useState<any | null>(null)
+  const [activity, setActivity] = useState<any | null>(null)
   const { t } = useTranslation("pages");
   const [emailStatus, setEmailStatus] = useState<{
     sent: boolean
@@ -19,15 +22,76 @@ export default function ConfirmationPage() {
 
   const [retryCount, setRetryCount] = useState(0)
   const emailSentRef = useRef(false)
+  // Build booking data from URL params (minimal) and fetch activity
+  useEffect(() => {
+    const activityId = searchParams.get("activityId")
+    const bookingId = searchParams.get("bookingId") || ""
+    const confirmationCode = searchParams.get("confirmationCode") || ""
+    const date = searchParams.get("date") || ""
+    const participantsStr = searchParams.get("participants") || "1"
+    const participants = Number.parseInt(participantsStr)
+    const firstName = searchParams.get("firstName") || ""
+    const lastName = searchParams.get("lastName") || ""
+    const email = searchParams.get("email") || ""
+    const phone = searchParams.get("phone") || ""
+
+    const built = {
+      personalInfo: { firstName, lastName, email, phone },
+      paymentInfo: undefined,
+      confirmationCode,
+      bookingDetails: {
+        date,
+        participants,
+        totalPrice: 0, // will compute after activity loads
+        confirmationCode,
+        bookingId,
+      },
+    }
+    setParsedBookingData(built)
+
+    if (!activityId) {
+      setActivity(null)
+      return
+    }
+    let cancelled = false
+    const load = async () => {
+      try {
+        const data = await ActivitiesService.getActivityById(activityId)
+        if (!cancelled) setActivity(data)
+      } catch {
+        if (!cancelled) setActivity(null)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams])
+
   const sendConfirmationEmail = async () => {
-    if (!bookingData || emailSentRef.current) return
+    if (!parsedBookingData || !activity || emailSentRef.current) return
+
+    // Ensure required fields are present
+    if (!parsedBookingData.personalInfo?.email || !activity?.title || !parsedBookingData.bookingDetails?.confirmationCode) {
+      setEmailStatus({ sent: false, loading: false, error: "Datos incompletos para enviar el email" })
+      return
+    }
     emailSentRef.current = true
     try {
       console.log("Enviando email de confirmación...")
       const response = await fetch("/api/send-confirmation-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(JSON.parse(bookingData)),
+        body: JSON.stringify({
+          ...parsedBookingData,
+          bookingDetails: {
+            ...parsedBookingData.bookingDetails,
+            totalPrice: activity && parsedBookingData?.bookingDetails?.participants
+              ? activity.price * parsedBookingData.bookingDetails.participants
+              : 0,
+          },
+          activity,
+        }),
       })
       const result = await response.json()
       console.log("Resultado:", result)
@@ -41,7 +105,16 @@ export default function ConfirmationPage() {
         await fetch("/api/booking-notify-admin", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(JSON.parse(bookingData)),
+          body: JSON.stringify({
+            ...parsedBookingData,
+            bookingDetails: {
+              ...parsedBookingData.bookingDetails,
+              totalPrice: activity && parsedBookingData?.bookingDetails?.participants
+                ? activity.price * parsedBookingData.bookingDetails.participants
+                : 0,
+            },
+            activity,
+          }),
         })
       } else {
         setEmailStatus({
@@ -60,17 +133,17 @@ export default function ConfirmationPage() {
     }
   }
   useEffect(() => {
-    if (bookingData) {
+    if (parsedBookingData && activity) {
       sendConfirmationEmail()
     }
-  }, [bookingData, retryCount])
+  }, [parsedBookingData, activity, retryCount])
 
   const handleRetry = () => {
     setEmailStatus({ sent: false, loading: true })
     setRetryCount((prev) => prev + 1)
   }
 
-  if (!bookingData) {
+  if (!parsedBookingData || !activity) {
     return (
       <div className="container mx-auto p-4">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -80,7 +153,6 @@ export default function ConfirmationPage() {
       </div>
     )
   }
-  const parsedBookingData = JSON.parse(bookingData)
   console.log("parsedBookingData", parsedBookingData)
   return (
     <div className="container mx-auto p-4">

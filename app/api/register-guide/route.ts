@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from 'next/server'
 import { GuideService } from '@/lib/guide-service'
 import { ActivitiesService } from '@/lib/activities-service'
@@ -7,7 +8,7 @@ import { createClient } from '@supabase/supabase-js'
 export async function POST(request: NextRequest) {
   try {
     // Validate critical environment
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       console.error('API: Missing Supabase envs. Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.')
@@ -15,6 +16,11 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: 'Server misconfigured: Supabase URL or Service Role Key missing',
+          hints: {
+            SUPABASE_URL: !!process.env.SUPABASE_URL,
+            NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+            SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+          }
         },
         { status: 500 }
       )
@@ -115,18 +121,32 @@ export async function POST(request: NextRequest) {
       return Math.min(rounded, MAX)
     })()
 
+    // Helper to normalize a possible photo input (string URL or object with url)
+    const toUrlString = (val: any): string | null => {
+      if (!val) return null
+      if (typeof val === 'string') return val
+      if (typeof val === 'object') {
+        if (typeof val.url === 'string') return val.url
+        if (typeof val.path === 'string') return val.path
+      }
+      return null
+    }
+
     // Create the activity
     const activityData = {
        id: randomUUID(), // Generate a UUID for activity ID
       title: formData.activityTitle,
       description: formData.activityDescription,
-      image: (formData.activityPhotos && formData.activityPhotos[0]) || '/placeholder.svg',
+      image: (() => {
+        const first = Array.isArray(formData.activityPhotos) ? formData.activityPhotos[0] : formData.activityPhotos
+        return toUrlString(first) || '/placeholder.svg'
+      })(),
       price: normalizedPrice,
       duration: `${formData.activityDuration} hours`,
       location: formData.activityLocation,
       rating: 0,
       category: formData.activityCategory,
-      season: formData.activitySeason.toLowerCase() || 'summer',
+      season: ((formData.activitySeason || 'summer') as string).toLowerCase(),
       difficulty: formData.activityDifficulty,
       included: ['Guía especializado', 'Equipo básico', 'Seguro de actividad'],
       not_included: ['Almuerzo', 'Transporte personal'],
@@ -138,7 +158,11 @@ export async function POST(request: NextRequest) {
       guide_languages: ['Español', 'Inglés'],
       guide_bio: formData.bio,
       guide_phone: formData.phone,
-      images: formData.activityPhotos || []
+      images: (() => {
+        const arr = Array.isArray(formData.activityPhotos) ? formData.activityPhotos : []
+        const urls = arr.map(toUrlString).filter(Boolean) as string[]
+        return urls.length > 0 ? urls : []
+      })()
     }
 
     // Validate activity data before sending to database
@@ -185,9 +209,11 @@ export async function POST(request: NextRequest) {
       throw new Error(`Guide created successfully but activity creation failed: ${errorMessage}`)
     }
 
-    // Notify admin
+    // Notify admin (best-effort)
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notify-admin`, {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')
+      if (appUrl) {
+        await fetch(`${appUrl}/api/notify-admin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -196,6 +222,9 @@ export async function POST(request: NextRequest) {
           activityId: newActivity.id
         }),
       })
+      } else {
+        console.warn("API: Skipping admin notification, app URL not configured")
+      }
     } catch (error) {
       console.error("API: Error notifying admin:", error)
     }

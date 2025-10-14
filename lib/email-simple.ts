@@ -14,6 +14,13 @@ function detectEmailConfig() {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASSWORD,
         },
+        // Ajustes recomendados para entornos serverless / evitar bloqueos
+        pool: false,
+        maxConnections: 1,
+        maxMessages: 1,
+        connectionTimeout: 10000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000,
       },
     }
   }
@@ -30,6 +37,12 @@ function detectEmailConfig() {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASSWORD,
         },
+        pool: false,
+        maxConnections: 1,
+        maxMessages: 1,
+        connectionTimeout: 10000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000,
       },
     }
   }
@@ -114,6 +127,28 @@ const getTransporter = () => {
   }
 }
 
+// Errores transitorios de red que vale la pena reintentar
+function isTransientNetworkError(error: unknown) {
+  const code = (error as any)?.code as string | undefined
+  if (!code) return false
+  const transient = new Set([
+    "EAI_AGAIN",
+    "EDNS",
+    "ETIMEDOUT",
+    "ECONNRESET",
+    "ECONNREFUSED",
+    "EHOSTUNREACH",
+    "ENOTFOUND",
+    "ESOCKETTIMEDOUT",
+    "ETIME",
+  ])
+  return transient.has(code)
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 // Función principal para enviar email
 export async function sendEmail({
   to,
@@ -172,23 +207,74 @@ export async function sendEmail({
   try {
     console.log("📧 Enviando email con nodemailer...")
 
-    const info = await transporter.sendMail({
-      from: process.env.EMAIL_USER || process.env.SMTP_USER,
+    const maxRetries = Number(process.env.EMAIL_MAX_RETRIES || 3)
+    let lastError: any = null
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Intento ${attempt}/${maxRetries} con nodemailer...`)
+        const info = await transporter.sendMail({
+          from: process.env.EMAIL_USER || process.env.SMTP_USER,
+          to,
+          subject,
+          html,
+          text,
+        })
+
+        console.log(`✅ Email enviado correctamente: ${info.messageId}`)
+        return {
+          success: true,
+          simulated: false,
+          id: info.messageId,
+          provider: "nodemailer",
+          message: "Email enviado correctamente",
+          attempts: attempt,
+        }
+      } catch (error) {
+        lastError = error
+        const code = (error as any)?.code
+        console.error("❌ Error en envío (nodemailer):", { code, error })
+
+        if (attempt < maxRetries && isTransientNetworkError(error)) {
+          const backoff = attempt * 1000
+          console.log(`⏳ Error transitorio (${code}). Reintentando en ${backoff}ms...`)
+          await delay(backoff)
+          continue
+        }
+        break
+      }
+    }
+
+    // Si llegó aquí, nodemailer falló en todos los intentos
+    console.log("⚠️ Nodemailer falló tras reintentos.")
+
+    // Si hay Resend configurado, intentar enviar con Resend como fallback
+    if (process.env.RESEND_API_KEY) {
+      try {
+        console.log("🔄 Probando fallback con Resend API...")
+        const result = await sendWithResend({ to, subject, html, text })
+        console.log(`✅ Email enviado con Resend tras fallo SMTP: ${result.id}`)
+        return {
+          success: true,
+          simulated: false,
+          id: result.id,
+          provider: "resend-fallback",
+          message: "Email enviado con Resend tras fallo SMTP",
+        }
+      } catch (fallbackError) {
+        console.error("❌ Fallback con Resend también falló:", fallbackError)
+      }
+    }
+
+    // Como último recurso, simular
+    console.log("📧 Usando simulación como último recurso")
+    return await simulateEmail({
       to,
       subject,
       html,
       text,
+      error: lastError instanceof Error ? lastError.message : "Error desconocido",
     })
-
-    console.log(`✅ Email enviado correctamente: ${info.messageId}`)
-
-    return {
-      success: true,
-      simulated: false,
-      id: info.messageId,
-      provider: "nodemailer",
-      message: "Email enviado correctamente",
-    }
   } catch (error) {
     console.error("❌ Error enviando email:", error)
 

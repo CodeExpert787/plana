@@ -2,7 +2,10 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Star, MapPin, Clock, CheckCircle2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Star, MapPin, Clock, CheckCircle2, MessageCircle } from "lucide-react"
 import { useTranslation } from "react-i18next";
 import "../../i18n-client";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,6 +24,15 @@ export default function ActivityDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
+  // Form state
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    contactNumber: '',
+    email: ''
+  })
+  const [isBookingOpen, setIsBookingOpen] = useState(false)
+  
   useEffect(() => {
     const loadActivity = async () => {
       if (!activityId) return
@@ -34,6 +46,14 @@ export default function ActivityDetailPage() {
     }
     loadActivity()
   }, [activityId])
+
+  // Open modal when bookNow=true is present in URL
+  useEffect(() => {
+    const bn = searchParams.get("bookNow")
+    if (bn === "true") {
+      setIsBookingOpen(true)
+    }
+  }, [searchParams])
 
   const refreshActivity = async () => {
     try {
@@ -67,6 +87,37 @@ export default function ActivityDetailPage() {
   const handleBookNow = () => {
     if (!activityId) return
     router.push(`/activity-detail?id=${activityId}&bookNow=true`)
+    setIsBookingOpen(true)
+  }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleWhatsAppContact = () => {
+    const activityTitle = activity?.title || t("trekkingTitle")
+    const activityLocation = activity?.location || t("location")
+    const activityPrice = activity?.price || t("price")
+    const message = encodeURIComponent(
+      `¡Hola! Me interesa la actividad "${activityTitle}" en ${activityLocation}. Precio: $${activityPrice}.`
+    )
+    const whatsappUrl = `https://wa.me/542944330500?text=${message}`
+    window.open(whatsappUrl, '_blank')
+  }
+
+  const handleSendReservation = () => {
+    // Include form data in the navigation URL as query parameters
+    const params = new URLSearchParams({
+      firstName: formData.firstName || '',
+      lastName: formData.lastName || '',
+      contactNumber: formData.contactNumber || '',
+      email: formData.email || ''
+    })
+
+    router.push(`/booking/${activityId}/steps?${params.toString()}`)
   }
   return (
     <div className="min-h-screen bg-gray-50 p-10">
@@ -128,9 +179,7 @@ export default function ActivityDetailPage() {
 
             <h3 className="mt-6 text-xl font-semibold">{t("includes")}</h3>
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {[t("includesItem1"), t("includesItem2"), t("includesItem3"), t("includesItem4")]
-                .filter(Boolean)
-                .map((text, idx) => (
+              {activity?.included?.map((text, idx) => (
                   <div key={idx} className="flex items-start text-gray-700">
                     <CheckCircle2 className="mt-0.5 mr-2 w-5 h-5 text-emerald-600" />
                     <span>{text as string}</span>
@@ -150,7 +199,7 @@ export default function ActivityDetailPage() {
                 </Avatar>
                 <div className="ml-3">
                   <div className="font-semibold">{(activity as any)?.guide_name || "Guía profesional"}</div>
-                  <div className="text-sm text-gray-600"> Guía local con más de {(activity as any)?.guide_experience} de experiencia</div>
+                  <div className="text-sm text-gray-600"> {(activity as any)?.description} </div>
                 </div>
               </div>
             </div>
@@ -161,14 +210,32 @@ export default function ActivityDetailPage() {
 
         {/* Price + Reviews row */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-          <div className="p-6 md:p-8 border rounded-lg h-full flex flex-col">
-            <div className="text-gray-500 text-sm">USD</div>
-            <div className="text-3xl font-bold text-gray-900">{activity?.price ? `USD ${activity.price}` : t("price")}</div>
-            <div className="text-sm text-gray-500">{t("pricePerPerson") || "por persona"}</div>
-            <Button onClick={handleBookNow} className="mt-auto bg-emerald-600 hover:bg-emerald-700 h-11 text-base w-full">
-              {t("bookNow")}
-            </Button>
-          </div>
+          {/* Price + CTA Card (opens modal) */}
+          <Card className="p-6 md:p-8 h-full flex flex-col justify-between">
+            <div>
+              <div className="text-start mb-6">
+                <div className="text-gray-500 text-sm">USD</div>
+                <div className="text-3xl font-bold text-gray-900">{activity?.price ? `${activity.price}` : "123"}</div>
+                <div className="text-sm text-gray-500">Precio por persona</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-auto">
+              <Button 
+                onClick={handleWhatsAppContact} 
+                className="bg-green-600 hover:bg-green-700 text-white h-11 text-base w-full"
+              >
+                <MessageCircle className="w-5 h-5 mr-2" /> WhatsApp
+              </Button>
+              <Button 
+                onClick={handleSendReservation}
+                className="bg-blue-900 hover:bg-blue-800 text-white h-11 text-base w-full"
+              >
+                {t("bookNow", "Reservar ahora")}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Reviews Card */}
           <Card className="p-6 md:p-8 h-full">
             <h3 className="text-xl font-semibold mb-4">{t("reviews")}</h3>
             <ReviewSection 
@@ -182,7 +249,53 @@ export default function ActivityDetailPage() {
         </div>
       </div>
       
+      {/* Booking Modal */}
+      {/* <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+        <DialogContent className="sm:max-w-[540px]">
+          <DialogHeader>
+            <DialogTitle>{t("book", "Reservar")}</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center mb-4">
+            <img src="/images/plan-a-logo-binoculars.png" alt="PLAN A Logo" className="h-10 w-auto" />
+          </div>
+
+          <div className="text-center mb-4">
+            <div className="text-gray-500 text-sm">USD</div>
+            <div className="text-3xl font-bold text-gray-900">{activity?.price ? `${activity.price}` : "123"}</div>
+            <div className="text-sm text-gray-500">Precio por persona</div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">Nombre:</Label>
+              <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleInputChange} className="mt-1" placeholder="Ingresa tu nombre" />
+            </div>
+            <div>
+              <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">Apellido:</Label>
+              <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleInputChange} className="mt-1" placeholder="Ingresa tu apellido" />
+            </div>
+            <div>
+              <Label htmlFor="contactNumber" className="text-sm font-medium text-gray-700">Número de contacto:</Label>
+              <Input id="contactNumber" name="contactNumber" value={formData.contactNumber} onChange={handleInputChange} className="mt-1" placeholder="Ingresa tu número" />
+            </div>
+            <div>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email:</Label>
+              <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} className="mt-1" placeholder="Ingresa tu email" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mt-6">
+            <Button onClick={handleWhatsAppContact} className="bg-green-600 hover:bg-green-700 text-white h-11 text-base w-full">
+              <MessageCircle className="w-5 h-5 mr-2" /> WhatsApp
+            </Button>
+            <Button onClick={handleSendReservation} className="bg-blue-900 hover:bg-blue-800 text-white h-11 text-base w-full">
+            {t("bookNow", "Reservar ahora")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog> */}
+
     </div>
-    
+  
   )
 }

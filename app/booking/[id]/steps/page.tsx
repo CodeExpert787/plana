@@ -39,6 +39,11 @@ export default function BookingStepsPage() {
   const dateParam = searchParams.get("date")
   const participantsParam = searchParams.get("participants")
   const participants = participantsParam ? Number.parseInt(participantsParam) : 1
+  // Personal info params (prefill support)
+  const firstNameParam = searchParams.get("firstName") || ""
+  const lastNameParam = searchParams.get("lastName") || ""
+  const contactNumberParam = searchParams.get("contactNumber") || ""
+  const emailParam = searchParams.get("email") || ""
 
   // Load activity from DB
   useEffect(() => {
@@ -82,6 +87,17 @@ export default function BookingStepsPage() {
   const handlePaymentSubmit = async () => {
     if (!personalInfo) return
 
+    // Basic validation to ensure required fields are present before proceeding
+    const missing: string[] = []
+    if (!personalInfo.firstName?.trim()) missing.push(t("firstName") || "Nombre")
+    if (!personalInfo.lastName?.trim()) missing.push(t("lastName") || "Apellido")
+    if (!personalInfo.email?.trim()) missing.push("Email")
+    if (!personalInfo.phone?.trim()) missing.push(t("phone") || "Teléfono")
+    if (missing.length > 0) {
+      alert(`${t("pleaseCompleteFields", "Por favor completa los campos")}:\n- ${missing.join("\n- ")}`)
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -94,7 +110,8 @@ export default function BookingStepsPage() {
         expiry: paymentInfo.expiry,
         cvv: paymentInfo.cvv,
       }
-      const bookingData = {
+      // Store only minimal data (without activity) to avoid oversized URLs
+      const minimalBookingData = {
         personalInfo,
         paymentInfo: safePaymentInfo,
         confirmationCode,
@@ -105,12 +122,22 @@ export default function BookingStepsPage() {
           confirmationCode,
           bookingId,
         },
-        activity
-      };
+      }
 
-      router.push(
-        `/booking/confirmation?activityId=${activity.id}&bookingId=${bookingId}&confirmationCode=${confirmationCode}&bookingData=${(JSON.stringify(bookingData))}`,
-      )
+
+      const params = new URLSearchParams({
+        activityId: activity.id,
+        bookingId,
+        confirmationCode,
+        date: dateParam || "",
+        participants: String(participants),
+        firstName: personalInfo.firstName,
+        lastName: personalInfo.lastName,
+        email: personalInfo.email,
+        phone: personalInfo.phone,
+      })
+
+      router.push(`/booking/confirmation?${params.toString()}`)
     } catch (error) {
       console.error("❌ Error procesando reserva:", error)
       const errorMessage = error instanceof Error ? error.message : "Error desconocido"
@@ -181,7 +208,17 @@ export default function BookingStepsPage() {
           </CardContent>
         </Card>
 
-        {currentStep === 1 && <PersonalInfoForm onSubmit={handlePersonalInfoSubmit} />}
+        {currentStep === 1 && (
+          <PersonalInfoForm
+            onSubmit={handlePersonalInfoSubmit}
+            initialData={{
+              firstName: firstNameParam,
+              lastName: lastNameParam,
+              phone: contactNumberParam,
+              email: emailParam,
+            }}
+          />
+        )}
 
         {currentStep === 2 && (
           <Card>

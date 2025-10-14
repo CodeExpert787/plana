@@ -157,6 +157,16 @@ export default function GuideProfilePage() {
   const rating = guide.rating?.toString() || "4.8"
   const reviewsCount = guide.total_reviews?.toString() || t("reviews")
   const description = guide.description || t("about_Value")
+  const formatMemberSince = (isoString: string | undefined) => {
+    if (!isoString) return ''
+    const d = new Date(isoString)
+    if (isNaN(d.getTime())) return isoString
+    const day = d.getUTCDate()
+    const months = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May.', 'Jun.', 'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.']
+    const mon = months[d.getUTCMonth()]
+    const year = d.getUTCFullYear()
+    return `${day} ${mon} ${year}`
+  }
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-sky-50">
       <div className="relative h-48 bg-emerald-600">
@@ -227,7 +237,7 @@ export default function GuideProfilePage() {
               <Calendar className="w-5 h-5 text-emerald-600 mr-2" />
               <div>
                 <p className="text-sm text-gray-500">{t("memberSince")}</p>
-                <p className="font-medium">{t("memberSinceValue")}</p>
+                <p className="font-medium">{formatMemberSince(guide.member_since)}</p>
               </div>
             </div>
             <div className="flex items-center">

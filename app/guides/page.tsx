@@ -264,16 +264,23 @@ export default function GuidesPage() {
     });
   };
 
-  // Add activity photo
-  const handleAddActivityPhoto = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
+  // Add activity photo - upload to server and store URL to avoid 413 payloads
+  const handleAddActivityPhoto = async (file: File) => {
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      form.append('folder', 'activity-photos')
+      const res = await fetch('/api/upload', { method: 'POST', body: form })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Upload failed')
       setFormData((prev) => ({
         ...prev,
-        activityPhotos: [...prev.activityPhotos, ev.target?.result as string],
-      }));
-    };
-    reader.readAsDataURL(file);
+        activityPhotos: [...prev.activityPhotos, json.url as string],
+      }))
+    } catch (e) {
+      console.error('Upload activity photo failed:', e)
+      alert(`Error subiendo la foto: ${(e as Error).message}`)
+    }
   };
 
   // Remove activity photo
@@ -554,15 +561,23 @@ export default function GuidesPage() {
                               <Upload className="h-4 w-4" />
                               {t("uploadPhoto")}
                             </Button>
-                            <input type="file" accept="image/*" ref={profilePhotoInputRef} style={{ display: "none" }} onChange={e => {
+                            <input type="file" accept="image/*" ref={profilePhotoInputRef} style={{ display: "none" }} onChange={async e => {
                               const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (ev) => {
-                                  setProfilePhotoPreview(ev.target?.result as string);
-                                  setFormData({ ...formData, profilePhoto: ev.target?.result as string });
-                                };
-                                reader.readAsDataURL(file);
+                              if (!file) return
+                              try {
+                                const form = new FormData()
+                                form.append('file', file)
+                                form.append('folder', 'profile-photos')
+                                const res = await fetch('/api/upload', { method: 'POST', body: form })
+                                const json = await res.json()
+                                if (!res.ok) throw new Error(json?.error || 'Upload failed')
+                                setProfilePhotoPreview(json.url as string)
+                                setFormData({ ...formData, profilePhoto: json.url as string })
+                              } catch (err) {
+                                console.error('Upload profile photo failed:', err)
+                                alert(`Error subiendo la foto de perfil: ${(err as Error).message}`)
+                              } finally {
+                                if (profilePhotoInputRef.current) profilePhotoInputRef.current.value = ''
                               }
                             }} />
                           </div>
@@ -585,7 +600,7 @@ export default function GuidesPage() {
                         <div className="space-y-2">
                           <Label>{t("specialties")}</Label>
                           <div className="flex flex-wrap gap-2">
-                            {activityCategories.slice(0, 8).map((category) => (
+                            {activityCategories.slice(0, activityCategories.length).map((category) => (
                               <Badge 
                                 key={category} 
                                 variant={formData.specialties.includes(category) ? "default" : "outline"} 

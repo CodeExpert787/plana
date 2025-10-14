@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { User, Mail, Phone, MapPin, UserCheck } from "lucide-react"
@@ -17,16 +17,28 @@ export interface PersonalInfo {
 
 interface PersonalInfoFormProps {
   onSubmit: (data: PersonalInfo) => void
+  initialData?: Partial<PersonalInfo>
 }
 
-export default function PersonalInfoForm({ onSubmit }: PersonalInfoFormProps) {
+export default function PersonalInfoForm({ onSubmit, initialData }: PersonalInfoFormProps) {
   const { t } = useTranslation("pages")
   const [formData, setFormData] = useState<PersonalInfo>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",    
+    firstName: initialData?.firstName || "",
+    lastName: initialData?.lastName || "",
+    email: initialData?.email || "",
+    phone: initialData?.phone || "",    
   })
+  
+  // Sync when initialData changes
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      firstName: initialData?.firstName ?? prev.firstName,
+      lastName: initialData?.lastName ?? prev.lastName,
+      email: initialData?.email ?? prev.email,
+      phone: initialData?.phone ?? prev.phone,
+    }))
+  }, [initialData?.firstName, initialData?.lastName, initialData?.email, initialData?.phone])
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
