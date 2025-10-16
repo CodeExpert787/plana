@@ -11,6 +11,7 @@ import { Star, MapPin, Calendar as CalendarIcon, Clock, Heart, Settings, LogOut,
 import { useRef } from "react"
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/protected-route";
 import { UserProfileService, UserProfile } from "@/lib/user-profile-service";
 import { BookingService, Booking } from "@/lib/booking-service";
@@ -60,7 +61,8 @@ const locations = [
 
 export default function ProfilePage() {
   const { t } = useTranslation("pages");
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("info")
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [userData, setUserData] = useState<UserProfile | null>(null)
@@ -626,7 +628,17 @@ export default function ProfilePage() {
               </Card>
 
               <div className="flex justify-center">
-                <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
+                <Button
+                  variant="outline"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={async () => {
+                    try {
+                      await signOut()
+                    } finally {
+                      router.push("/login")
+                    }
+                  }}
+                >
                   <LogOut className="h-4 w-4 mr-2" />
                   {t("logout")}
                 </Button>

@@ -170,9 +170,9 @@ export default function HomePage() {
         {/* Hero Content */}
         <div className="relative z-20 flex flex-col justify-center items-center text-center text-white px-4 max-w-4xl min-h-screen">
           <div className="flex items-center justify-center xl:mb-24 mb-12">
-            <img src="/images/plan-a-logo-binoculars.png" alt="PLAN A Logo" className="xl:h-32 h-18w-auto" />
+            <img src="/images/plan-a-logo-binoculars.png" alt="PLAN A Logo" className="h-12 xl:h-32" />
           </div>
-          <h2 className="text-4xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold mb-6 leading-tight">
+          <h2 className="text-3xl xl:text-6xl font-bold mb-6 leading-tight">
             {t("findYourNext")}
             <span className="block text-emerald-400">{t("patagonianAdventure")}</span>
           </h2>

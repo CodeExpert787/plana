@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Star, MapPin, Clock, CheckCircle2, MessageCircle } from "lucide-react"
+import { Star, MapPin, Clock, CheckCircle2, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { useTranslation } from "react-i18next";
 import "../../i18n-client";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -23,6 +23,7 @@ export default function ActivityDetailPage() {
   const [totalReviews, setTotalReviews] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   
   // Form state
   const [formData, setFormData] = useState({
@@ -119,6 +120,20 @@ export default function ActivityDetailPage() {
 
     router.push(`/booking/${activityId}/steps?${params.toString()}`)
   }
+  
+  const images = (activity?.images && activity.images.length > 0)
+    ? activity.images
+    : [(activity?.image as any) || "/placeholder.svg?height=900&width=1200"]
+
+  const nextImage = () => {
+    const len = images.length
+    setCurrentImageIndex((prev) => (prev + 1) % len)
+  }
+
+  const prevImage = () => {
+    const len = images.length
+    setCurrentImageIndex((prev) => (prev - 1 + len) % len)
+  }
   return (
     <div className="min-h-screen bg-gray-50 p-10">
       {/* Hero Image */}
@@ -140,12 +155,40 @@ export default function ActivityDetailPage() {
         </button>
       </div>
       <div className="relative max-w-5xl mx-auto h-[380px]">
-        
+
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${activity?.images?.[0] || activity?.image || "/placeholder.svg?height=900&width=1200"})` }}
+          style={{ backgroundImage: `url(${images[currentImageIndex] || "/placeholder.svg?height=900&width=1200"})` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+        {images.length > 1 && (
+          <>
+            <button
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white p-1 rounded-full z-20"
+              onClick={(e) => { e.stopPropagation(); prevImage() }}
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white p-1 rounded-full z-20"
+              onClick={(e) => { e.stopPropagation(); nextImage() }}
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+            <div className="absolute top-2 left-0 right-0 flex justify-center gap-1 z-20">
+              {images.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`h-[10px] rounded-full ${idx === currentImageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'}`}
+                  onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx) }}
+                  role="button"
+                  aria-label={`Go to image ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
         <div className="relative z-10 max-w-5xl mx-auto px-4 h-full flex items-start pt-8 pl-8">
           <div>
             <h1 className="text-white text-2xl xl:text-5xl font-extrabold drop-shadow">
@@ -216,7 +259,6 @@ export default function ActivityDetailPage() {
               <div className="text-start mb-6">
                 <div className="text-gray-500 text-sm">USD</div>
                 <div className="text-3xl font-bold text-gray-900">{activity?.price ? `${activity.price}` : "123"}</div>
-                <div className="text-sm text-gray-500">Precio por persona</div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mt-auto">

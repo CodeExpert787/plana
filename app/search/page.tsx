@@ -7,7 +7,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Star, MapPin, Filter, Search, Clock, Heart, ArrowLeft, ArrowRight, Calendar, X, XCircle, CheckCircle } from "lucide-react"
+import { Star, MapPin, Filter, Search, Clock, Heart, ArrowLeft, ArrowRight, Calendar, X, XCircle, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { motion, AnimatePresence, type PanInfo } from "framer-motion"
 import Image from "next/image"
 import { ActivityDetailModal } from "@/components/activity-detail-modal"
@@ -41,6 +41,7 @@ function ActivitySwipeView({
   const [remainingActivities, setRemainingActivities] = useState(activities)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [imageIndex, setImageIndex] = useState(0)
   // Load disliked (discarded) activities from localStorage once
   useEffect(() => {
     try {
@@ -69,6 +70,11 @@ function ActivitySwipeView({
 
     return () => clearTimeout(timer)
   }, [])
+
+  // Always register this effect before any early returns to keep hook order stable
+  useEffect(() => {
+    setImageIndex(0)
+  }, [currentIndex, remainingActivities])
 
   const handleSwipe = useCallback(
     (dir: "left" | "right") => {
@@ -187,18 +193,59 @@ function ActivitySwipeView({
             <div className="relative h-full w-full overflow-hidden rounded-2xl shadow-xl">
               <div className={`absolute inset-0 ${currentActivity.color}`}>
                 {currentActivity.images && currentActivity.images.length > 0 ? (
-                  <Image
-                    src={currentActivity.images[0] || "/placeholder.svg"}
-                    alt={currentActivity.title}
-                    fill
-                    className="object-cover"
-                  />
+                  <>
+                    <Image
+                      src={currentActivity.images[imageIndex] || "/placeholder.svg"}
+                      alt={currentActivity.title}
+                      fill
+                      className="object-cover"
+                    />
+                    {/* Match modal: use chevrons and dot style; remove numeric counter */}
+                    {currentActivity.images.length > 1 && (
+                      <>
+                        <button
+                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white p-1 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const len = currentActivity.images.length
+                            setImageIndex((prev) => (prev - 1 + len) % len)
+                          }}
+                        >
+                          <ChevronLeft className="w-6 h-6" />
+                        </button>
+                        <button
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white p-1 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const len = currentActivity.images.length
+                            setImageIndex((prev) => (prev + 1) % len)
+                          }}
+                        >
+                          <ChevronRight className="w-6 h-6 z-30" />
+                        </button>
+                        <div className="absolute top-2 left-0 right-0 flex justify-center gap-1 z-20">
+                          {currentActivity.images.map((_: string, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`h-[10px] rounded-full ${idx === imageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'}`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setImageIndex(idx)
+                              }}
+                              role="button"
+                              aria-label={`Go to image ${idx + 1}`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-white text-9xl opacity-30">
                     {currentActivity.emoji}
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
               </div>
 
               {/* Instrucciones en la parte superior */}
@@ -268,80 +315,17 @@ function ActivitySwipeView({
                 <h2 className="text-2xl font-bold mb-2">{currentActivity.title}</h2>
 
                 {/* Location and duration row to match modal */}
-                <div className="flex items-center justify-between text-sm text-white/90 mb-2">
+
                   <div className="flex items-center">
                     <MapPin size={16} className="mr-1 text-emerald-300" />
                     <span>{currentActivity.location}</span>
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex items-center mb-7">
                     <Clock size={16} className="mr-1 text-emerald-300" />
                     <span>{currentActivity.duration}</span>
                   </div>
-                </div>
 
-                <p className="mb-3 text-white/90">{currentActivity.description}</p>
-                {/* Incluye box */}
-              <div>
-                <h3 className="font-semibold mb-2">{t("included")}</h3>
-                <div className="bg-transparent rounded-xl xl:p-4 p-2">
-                  <div className="grid grid-cols-2 gap-y-2 gap-x-4">
-                    {(currentActivity.included && currentActivity.included.length > 0
-                      ? currentActivity.included
-                      : [
-                          t("specializedGuide"),
-                          t("trekkingPoles", "Bastones"),
-                          t("snowshoes", "Raquetas de nieve"),
-                          t("safetyEquipment", "Equipo de seguridad"),
-                        ]
-                    ).slice(0, 6).map((item: string, index: number) => (
-                      <div key={index} className="flex items-start">
-                        <CheckCircle className="w-4 h-4 text-emerald-600 mr-2 mt-0.5" />
-                        <span className="text-white text-sm">{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {/* Not included box */}
-              {currentActivity.notIncluded.length > 0 && (
-              <div>
-                <h3 className="font-semibold mb-2">{t("notIncluded")}</h3>
-                <div className="bg-transparent rounded-xl xl:p-4 p-2">
-                  <div className="grid grid-cols-2 gap-y-2 gap-x-4">
-                    {currentActivity.notIncluded.slice(0, 6).map((item: string, index: number) => (
-                      <div key={index} className="flex items-start">
-                        <XCircle className="w-4 h-4 text-red-600 mr-2 mt-0.5" />
-                        <span className="text-white text-sm">{item}</span>
-                      </div>
-                    ))}
-                    </div>
-                  </div>
-                </div>
-              )}
 
-                <div className="flex items-center pt-2 xl:pt-4 mt-2 xl:mt-4 border-t border-white/20">
-                  <div className="ml-3">
-                    <div className="flex items-center text-sm xl:text-lg">
-                      <span>{t("guide")}</span>
-                      <span className="mx-1">:</span>
-                      <span>{currentActivity.guide.name}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center pt-2 xl:pt-4 mt-2 xl:mt-4 border-t border-white/20">
-                  
-                  <div className="ml-3">
-              
-                    <div className="flex items-center text-sm">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                      <span>{currentActivity.guide.rating}</span>
-                      <span className="mx-1">•</span>
-                      <span>{currentActivity.guide.reviews} {t("reviews")}</span>
-                    </div>
-
-                  </div>
-                </div>
                 {/* Botón */}
                 <Button
                   className="w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg"
@@ -403,17 +387,57 @@ function ActivityGridView({
   const [showFilters, setShowFilters] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [activeTab, setActiveTab] = useState<"all" | "matches">("all")
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [priceFilter, setPriceFilter] = useState<"any" | "lt10000" | "10to20" | "20to30" | "gt30000">("any")
+  const [durationFilter, setDurationFilter] = useState<"any" | "lt2" | "2to4" | "4to6" | "gt6">("any")
   const { t } = useTranslation("pages");
   // Filtrar actividades según búsqueda y pestaña activa
   const filteredActivities = useMemo(() => {
-    return activities.filter(
-      (activity: any) =>
-        (activeTab === "all" || (activeTab === "matches" && likedActivities.includes(activity.id))) &&
-        (activity.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          activity.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          activity.tags.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))),
-    )
-  }, [activities, activeTab, likedActivities, searchTerm])
+    const getDurationHours = (d: string): number => {
+      const match = typeof d === 'string' ? d.match(/(\d+(?:\.\d+)?)/) : null
+      return match ? parseFloat(match[1]) : 0
+    }
+
+    return activities.filter((activity: any) => {
+      // Tab filter
+      if (activeTab === "matches" && !likedActivities.includes(activity.id)) {
+        return false
+      }
+
+      // Text search filter
+      const q = searchTerm.toLowerCase()
+      const matchesText =
+        activity.title.toLowerCase().includes(q) ||
+        activity.description.toLowerCase().includes(q) ||
+        (Array.isArray(activity.tags) && activity.tags.some((tag: string) => tag.toLowerCase().includes(q)))
+      if (!matchesText) return false
+
+      // Category filter (uses internal categoryKey from activity mapping)
+      if (selectedCategories.length > 0 && !selectedCategories.includes(activity.categoryKey)) {
+        return false
+      }
+
+      // Price filter
+      const price: number = Number(activity.price) || 0
+      let priceOk = true
+      if (priceFilter === "lt10000") priceOk = price < 10000
+      else if (priceFilter === "10to20") priceOk = price >= 10000 && price <= 20000
+      else if (priceFilter === "20to30") priceOk = price > 20000 && price <= 30000
+      else if (priceFilter === "gt30000") priceOk = price > 30000
+      if (!priceOk) return false
+
+      // Duration filter (parse hours from string like "6 hours")
+      const hours = getDurationHours(activity.duration)
+      let durationOk = true
+      if (durationFilter === "lt2") durationOk = hours < 2
+      else if (durationFilter === "2to4") durationOk = hours >= 2 && hours <= 4
+      else if (durationFilter === "4to6") durationOk = hours > 4 && hours <= 6
+      else if (durationFilter === "gt6") durationOk = hours > 6
+      if (!durationOk) return false
+
+      return true
+    })
+  }, [activities, activeTab, likedActivities, searchTerm, selectedCategories, priceFilter, durationFilter])
 
   // Función para manejar el like/unlike de una actividad
   const toggleLike = useCallback(
@@ -426,6 +450,12 @@ function ActivityGridView({
     },
     [likedActivities, setLikedActivities],
   )
+
+  const toggleCategory = useCallback((categoryKey: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(categoryKey) ? prev.filter((k) => k !== categoryKey) : [...prev, categoryKey],
+    )
+  }, [])
 
   return (
     <div>
@@ -468,40 +498,115 @@ function ActivityGridView({
         <div className="mb-4 p-4 bg-white rounded-lg shadow-sm">
           <h3 className="font-medium mb-3">{t("filters")}</h3>
           <div className="flex flex-wrap gap-2">
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer">{t("trekking")}</Badge>
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer">{t("kayak")}</Badge>
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer">{t("climbing")}</Badge>
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer">{t("skiing")}</Badge>
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer">{t("fishing")}</Badge>
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer">{t("horseback")}</Badge>
+            <Badge
+              className={`cursor-pointer ${
+                selectedCategories.includes('trekking')
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+              }`}
+              onClick={() => toggleCategory('trekking')}
+            >
+              {t("trekking")}
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${
+                selectedCategories.includes('kayak')
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+              }`}
+              onClick={() => toggleCategory('kayak')}
+            >
+              {t("kayak")}
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${
+                selectedCategories.includes('climbing')
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+              }`}
+              onClick={() => toggleCategory('climbing')}
+            >
+              {t("climbing")}
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${
+                selectedCategories.includes('skiing')
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+              }`}
+              onClick={() => toggleCategory('skiing')}
+            >
+              {t("skiing")}
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${
+                selectedCategories.includes('fishing')
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+              }`}
+              onClick={() => toggleCategory('fishing')}
+            >
+              {t("fishing")}
+            </Badge>
+            <Badge
+              className={`cursor-pointer ${
+                selectedCategories.includes('horseback')
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+              }`}
+              onClick={() => toggleCategory('cycling')}
+            >
+              {t("cycling")}
+            </Badge>
           </div>
           <div className="grid grid-cols-2 gap-4 mt-3">
             <div>
               <label className="block text-sm text-gray-500 mb-1">{t("price")}</label>
-              <select className="w-full p-2 border rounded-md text-sm">
-                <option>{t("anyPrice")}</option>
-                <option>{t("lessThan10000")}</option>
-                <option>{t("between10000And20000")}</option>
-                <option>{t("between20000And30000")}</option>
-                <option>{t("moreThan30000")}</option>
+              <select
+                className="w-full p-2 border rounded-md text-sm"
+                value={priceFilter}
+                onChange={(e) => setPriceFilter(e.target.value as any)}
+              >
+                <option value="any">{t("anyPrice")}</option>
+                <option value="lt10000">{t("lessThan10000")}</option>
+                <option value="10to20">{t("between10000And20000")}</option>
+                <option value="20to30">{t("between20000And30000")}</option>
+                <option value="gt30000">{t("moreThan30000")}</option>
               </select>
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">{t("duration")}</label>
-              <select className="w-full p-2 border rounded-md text-sm">
-                <option>{t("anyDuration")}</option>
-                <option>{t("lessThan2Hours")}</option>
-                <option>{t("between2And4Hours")}</option>
-                <option>{t("between4And6Hours")}</option>
-                <option>{t("moreThan6Hours")}</option>
+              <select
+                className="w-full p-2 border rounded-md text-sm"
+                value={durationFilter}
+                onChange={(e) => setDurationFilter(e.target.value as any)}
+              >
+                <option value="any">{t("anyDuration")}</option>
+                <option value="lt2">{t("lessThan2Hours")}</option>
+                <option value="2to4">{t("between2And4Hours")}</option>
+                <option value="4to6">{t("between4And6Hours")}</option>
+                <option value="gt6">{t("moreThan6Hours")}</option>
               </select>
             </div>
           </div>
           <div className="flex justify-end mt-3">
-            <Button size="sm" variant="outline" className="mr-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="mr-2"
+              onClick={() => {
+                setSelectedCategories([])
+                setPriceFilter("any")
+                setDurationFilter("any")
+              }}
+            >
               {t("clear")}
             </Button>
-            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => setShowFilters(false)}
+            >
               {t("apply")}
             </Button>
           </div>
