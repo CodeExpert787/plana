@@ -106,35 +106,14 @@ export default function HomePage() {
   // Construir la URL de búsqueda con los filtros seleccionados
   const buildSearchUrl = (viewMode = "grid") => {
     const params = new URLSearchParams()
-
     // Añadir parámetros básicos
     params.append("view", viewMode)
-    // if (selectedDate) {
-    //   params.append("date", selectedDate.toISOString())
-    // }
-    // params.append("people", people.toString())
-
-    // // Añadir temporada
-    // params.append("season", season === "winter" ? t("winter") : t("summer"))
-
-    // // Añadir categorías seleccionadas
-    // const selectedCategories = []
-    // if (trekking) selectedCategories.push(t("trekking"))
-    // if (escalada) selectedCategories.push(t("climbing"))
-    // if (esqui) selectedCategories.push(t("skiing"))
-    // if (bicicleta) selectedCategories.push(t("cycling"))
-    // if (kayak) selectedCategories.push(t("kayak"))
-    // if (pesca) selectedCategories.push(t("fishing"))
-    // if (parapente) selectedCategories.push(t("paragliding"))
-
-    // if (selectedCategories.length > 0) {
-    //   params.append("categories", selectedCategories.join(","))
-    // }
-
-    // // Añadir ubicación seleccionada
-    // params.append("location", location.id.toString())
-    // params.append("locationName", location.name)
-
+    return `/search?${params.toString()}`
+  }
+  const navHomebuildSearchUrl = (viewMode = "grid") => {
+    const params = new URLSearchParams()
+    // Añadir parámetros básicos
+    params.append("view", viewMode)
     return `/search?${params.toString()}`
   }
   return (
@@ -372,7 +351,7 @@ export default function HomePage() {
       </section>
 
       <nav className="flex items-center justify-around p-4 bg-white border-t">
-        <Link href="/" className="flex flex-col items-center text-gray-400">
+        <Link href={navHomebuildSearchUrl("swipe")} className="flex flex-col items-center text-gray-400">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"

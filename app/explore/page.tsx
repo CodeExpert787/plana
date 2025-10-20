@@ -109,7 +109,12 @@ const activities = [
 export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState<"explore" | "matches">("explore")
   const [likedActivities, setLikedActivities] = useState<number[]>([])
-
+  const navHomebuildSearchUrl = (viewMode = "grid") => {
+    const params = new URLSearchParams()
+    // Añadir parámetros básicos
+    params.append("view", viewMode)
+    return `/search?${params.toString()}`
+  }
   // Cargar actividades likeadas desde localStorage al iniciar
   useEffect(() => {
     const savedLikes = localStorage.getItem("likedActivities")
@@ -451,7 +456,7 @@ export default function ExplorePage() {
       </div>
 
       <nav className="flex items-center justify-around p-4 bg-white border-t">
-        <Link href="/" className="flex flex-col items-center text-gray-400">
+        <Link href={navHomebuildSearchUrl("swipe")} className="flex flex-col items-center text-gray-400">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"

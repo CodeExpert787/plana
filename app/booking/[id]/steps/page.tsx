@@ -44,7 +44,12 @@ export default function BookingStepsPage() {
   const lastNameParam = searchParams.get("lastName") || ""
   const contactNumberParam = searchParams.get("contactNumber") || ""
   const emailParam = searchParams.get("email") || ""
-
+  const navHomebuildSearchUrl = (viewMode = "grid") => {
+    const params = new URLSearchParams()
+    // Añadir parámetros básicos
+    params.append("view", viewMode)
+    return `/search?${params.toString()}`
+  }
   // Load activity from DB
   useEffect(() => {
     if (!id) return
@@ -307,10 +312,10 @@ export default function BookingStepsPage() {
       </div>
       <nav className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t">
         <div className=" mx-auto flex items-center justify-around p-4">
-        <Link href="/" className="flex flex-col items-center text-emerald-600">
+        <Link href={navHomebuildSearchUrl("swipe")} className="flex flex-col items-center text-emerald-600">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="20"
+            width="20"  
             height="20"
             viewBox="0 0 24 24"
             fill="none"

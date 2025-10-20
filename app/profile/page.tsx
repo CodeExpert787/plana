@@ -101,7 +101,12 @@ export default function ProfilePage() {
   const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([])
   const [bookingsLoading, setBookingsLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
+  const navHomebuildSearchUrl = (viewMode = "grid") => {
+    const params = new URLSearchParams()
+    // Añadir parámetros básicos
+    params.append("view", viewMode)
+    return `/search?${params.toString()}`
+  }
   // Handle hash navigation to scroll to search section
   useEffect(() => {
     const handleHashNavigation = () => {
@@ -862,7 +867,7 @@ export default function ProfilePage() {
       
 
       <nav className="flex items-center justify-around p-4 bg-white border-t">
-        <Link href="/" className="flex flex-col items-center text-gray-400">
+        <Link href={navHomebuildSearchUrl("swipe")} className="flex flex-col items-center text-gray-400">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"

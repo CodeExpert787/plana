@@ -144,7 +144,12 @@ export default function FiltersPage() {
 
     return `/search?${params.toString()}`
   }
-
+  const navHomebuildSearchUrl = (viewMode = "grid") => {
+    const params = new URLSearchParams()
+    // Añadir parámetros básicos
+    params.append("view", viewMode)
+    return `/search?${params.toString()}`
+  }
   return (
     <main className="flex flex-col min-h-screen">
 
@@ -609,7 +614,7 @@ export default function FiltersPage() {
           </Card>
 
           <div className="grid grid-cols-2 gap-3">
-            <Link href={buildSearchUrl("swipe")}>
+            <Link href={buildSearchUrl("grid")}>
               <Button className="w-full bg-emerald-600 hover:bg-emerald-700 py-6">
                 {t("searchActivities", "Search Activities")}
               </Button>
@@ -641,7 +646,7 @@ export default function FiltersPage() {
       </div>
 
       <nav className="flex items-center justify-around p-4 bg-white border-t">
-        <Link href="/" className="flex flex-col items-center text-emerald-600">
+        <Link href={navHomebuildSearchUrl("swipe")} className="flex flex-col items-center text-emerald-600">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
