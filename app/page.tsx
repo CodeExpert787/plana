@@ -131,18 +131,7 @@ export default function HomePage() {
         <header className="absolute top-0 left-0 right-0 bg-black/60 backdrop-blur-md z-50">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             
-            <div className="flex items-center">
-              {!loading && !user && (
-                <Link href="/login">
-                  <Button
-                    size="sm"
-                    className="text-sm sm:text-base bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2"
-                  >
-                    {t("startAdventure")}
-                  </Button>
-                </Link>
-              )}
-            </div>
+
           </div>
         </header>
 

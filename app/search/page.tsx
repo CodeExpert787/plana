@@ -13,6 +13,8 @@ import Image from "next/image"
 import { ActivityDetailModal } from "@/components/activity-detail-modal"
 
 import { ActivitiesService } from "@/lib/activities-service"
+import { UserPreferencesService } from "@/lib/user-preferences-service"
+import { useAuth } from "@/lib/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslation } from "react-i18next";
 import "../../i18n-client";
@@ -26,10 +28,14 @@ function ActivitySwipeView({
   activities,
   likedActivities,
   setLikedActivities,
+  userId,
+  onDisliked,
 }: {
   activities: any[] // Changed from typeof activities to any[] to avoid type error
   likedActivities: string[]
   setLikedActivities: (ids: string[]) => void
+  userId?: string
+  onDisliked?: (id: string) => void
 }) {
   const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -42,18 +48,32 @@ function ActivitySwipeView({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [imageIndex, setImageIndex] = useState(0)
-  // Load disliked (discarded) activities from localStorage once
+  // Load disliked (discarded) activities from Supabase if logged in, else localStorage
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('dislikedActivities')
-      if (saved) {
-        const ids = JSON.parse(saved)
-        if (Array.isArray(ids)) setDislikedActivityIds(ids)
+    let cancelled = false
+    const loadDisliked = async () => {
+      try {
+        if (userId) {
+          const prefs = await UserPreferencesService.getPreferences(userId)
+          if (!cancelled) setDislikedActivityIds(prefs.dislikedIds)
+          return
+        }
+      } catch (e) {
+        console.warn('Failed to load disliked from Supabase, falling back to localStorage')
       }
-    } catch (e) {
-      console.warn('Failed to parse dislikedActivities from localStorage')
+      try {
+        const saved = localStorage.getItem('dislikedActivities')
+        if (saved) {
+          const ids = JSON.parse(saved)
+          if (!cancelled && Array.isArray(ids)) setDislikedActivityIds(ids)
+        }
+      } catch (e) {
+        console.warn('Failed to parse dislikedActivities from localStorage')
+      }
     }
-  }, [])
+    loadDisliked()
+    return () => { cancelled = true }
+  }, [userId])
 
   // Reset and filter swipe deck whenever inputs change
   useEffect(() => {
@@ -84,18 +104,28 @@ function ActivitySwipeView({
       setExitX(dir === "left" ? -300 : 300)
 
       // Actualizar likes/dislikes
+      const activityId = remainingActivities[currentIndex].id
       if (dir === "right") {
         const newLikedActivities = [...likedActivities]
-        if (!newLikedActivities.includes(remainingActivities[currentIndex].id)) {
-          newLikedActivities.push(remainingActivities[currentIndex].id)
+        if (!newLikedActivities.includes(activityId)) {
+          newLikedActivities.push(activityId)
         }
         setLikedActivities(newLikedActivities)
+        // Persist like if logged-in
+        if (userId) {
+          UserPreferencesService.setPreference(userId, activityId, 'liked').catch(() => {})
+        }
       } else if (dir === "left") {
         setDislikedActivityIds(prev => {
-          const next = prev.includes(remainingActivities[currentIndex].id)
-            ? prev
-            : [...prev, remainingActivities[currentIndex].id]
-          localStorage.setItem('dislikedActivities', JSON.stringify(next))
+          const next = prev.includes(activityId) ? prev : [...prev, activityId]
+          if (!userId) {
+            localStorage.setItem('dislikedActivities', JSON.stringify(next))
+          } else {
+            UserPreferencesService.setPreference(userId, activityId, 'disliked').catch(() => {})
+          }
+          if (onDisliked) {
+            try { onDisliked(activityId) } catch {}
+          }
           return next
         })
       }
@@ -713,8 +743,10 @@ function ActivityGridView({
 // Página principal que alterna entre las dos vistas
 export default function SearchPage() {
   const { t } = useTranslation("pages");
+  const { user } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "swipe">("grid")
   const [likedActivities, setLikedActivities] = useState<string[]>([])
+  const [dislikedActivities, setDislikedActivities] = useState<string[]>([])
   const [selectedActivity, setSelectedActivity] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
@@ -941,8 +973,8 @@ const activities: Activity[] = useMemo(() =>
     return () => { isCancelled = true }
   }, [activitiesData])
 
-  // Filtrar actividades según temporada y categoría usando useMemo
-  const filteredActivities = useMemo(() => {
+  // Filtrar actividades según temporada y categoría (no excluye likes/dislikes)
+  const baseFilteredActivities = useMemo(() => {
     return activities.filter((activity: Activity) => {
       // Filtro de temporada - use seasonKey for consistent filtering
       if (seasonFilter !== "all") {
@@ -961,10 +993,19 @@ const activities: Activity[] = useMemo(() =>
       if (locationId && activity.locationId && activity.locationId !== locationId) {
         return false
       }
-
       return true
     })
   }, [activities, seasonFilter, categoryFilters, locationId])
+
+  // Para swipe: excluir actividades ya likeadas o descartadas
+  const swipeCandidateActivities = useMemo(() => {
+    return baseFilteredActivities.filter((activity: Activity) => {
+      if (likedActivities.includes(activity.id) || dislikedActivities.includes(activity.id)) {
+        return false
+      }
+      return true
+    })
+  }, [baseFilteredActivities, likedActivities, dislikedActivities])
 
   // Detectar el parámetro de URL para establecer la vista inicial y obtener la fecha
   useEffect(() => {
@@ -1045,18 +1086,53 @@ const activities: Activity[] = useMemo(() =>
     loadActivities()
   }, [])
 
-  // Cargar actividades likeadas desde localStorage al iniciar
+  // Load likes/dislikes from Supabase if logged-in, otherwise localStorage
   useEffect(() => {
-    const savedLikes = localStorage.getItem("likedActivities")
-    if (savedLikes) {
-      setLikedActivities(JSON.parse(savedLikes))
+    let cancelled = false
+    const loadPrefs = async () => {
+      try {
+        if (user?.id) {
+          const prefs = await UserPreferencesService.getPreferences(user.id)
+          if (!cancelled) {
+            setLikedActivities(prefs.likedIds)
+            setDislikedActivities(prefs.dislikedIds)
+          }
+        } else {
+          const savedLikes = localStorage.getItem("likedActivities")
+          if (!cancelled && savedLikes) setLikedActivities(JSON.parse(savedLikes))
+          const savedDislikes = localStorage.getItem('dislikedActivities')
+          if (!cancelled && savedDislikes) setDislikedActivities(JSON.parse(savedDislikes))
+        }
+      } catch (e) {
+        console.warn('Failed to load preferences, falling back to localStorage', e)
+        const savedLikes = localStorage.getItem("likedActivities")
+        if (!cancelled && savedLikes) setLikedActivities(JSON.parse(savedLikes))
+        const savedDislikes = localStorage.getItem('dislikedActivities')
+        if (!cancelled && savedDislikes) setDislikedActivities(JSON.parse(savedDislikes))
+      }
     }
-  }, [])
+    loadPrefs()
+    return () => { cancelled = true }
+  }, [user?.id])
 
-  // Guardar actividades likeadas en localStorage cuando cambian
+  // Persist likes/dislikes to Supabase when logged-in; else localStorage
   useEffect(() => {
-    localStorage.setItem("likedActivities", JSON.stringify(likedActivities))
-  }, [likedActivities])
+    let cancelled = false
+    const persist = async () => {
+      if (user?.id) {
+        try {
+          // No bulk endpoint; we upsert on interaction instead in swipe. This effect is a noop for Supabase
+        } catch (e) {
+          console.warn('Failed to persist likes to Supabase', e)
+        }
+      } else {
+        localStorage.setItem("likedActivities", JSON.stringify(likedActivities))
+        localStorage.setItem('dislikedActivities', JSON.stringify(dislikedActivities))
+      }
+    }
+    persist()
+    return () => { cancelled = true }
+  }, [likedActivities, dislikedActivities, user?.id])
 
   // Alternar entre vistas
   const toggleViewMode = useCallback(() => {
@@ -1256,16 +1332,18 @@ const activities: Activity[] = useMemo(() =>
           </div>
         ) : viewMode === "grid" ? (
           <ActivityGridView
-            activities={filteredActivities}
+            activities={baseFilteredActivities}
             likedActivities={likedActivities}
             setLikedActivities={setLikedActivities}
             onActivityClick={handleActivityClick}
           />
         ) : (
           <ActivitySwipeView
-            activities={filteredActivities}
+            activities={swipeCandidateActivities}
             likedActivities={likedActivities}
             setLikedActivities={setLikedActivities}
+            userId={user?.id}
+            onDisliked={(id) => setDislikedActivities(prev => prev.includes(id) ? prev : [...prev, id])}
           />
         )}
       </div>

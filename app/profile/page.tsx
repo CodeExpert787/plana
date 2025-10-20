@@ -16,6 +16,7 @@ import ProtectedRoute from "@/components/protected-route";
 import { UserProfileService, UserProfile } from "@/lib/user-profile-service";
 import { BookingService, Booking } from "@/lib/booking-service";
 import { ActivitiesService } from "@/lib/activities-service";
+import { UserPreferencesService } from "@/lib/user-preferences-service";
 import "../../i18n-client";
 
 
@@ -72,32 +73,55 @@ export default function ProfilePage() {
   const [completedBookings, setCompletedBookings] = useState<Booking[]>([])
   const [likedIds, setLikedIds] = useState<string[]>([])
   const [favoriteActivities, setFavoriteActivities] = useState<any[]>([])
-  // Load favorite activities from localStorage and fetch from DB
+  // Load favorite activities from Supabase if logged-in, else localStorage
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('likedActivities')
-      if (!saved) {
-        setFavoriteActivities([])
-        setLikedIds([])
-        return
+    let cancelled = false
+    const loadFavorites = async () => {
+      try {
+        if (user?.id) {
+          const prefs = await UserPreferencesService.getPreferences(user.id)
+          const ids = prefs.likedIds
+          if (!cancelled) setLikedIds(ids)
+          if (ids.length > 0) {
+            ActivitiesService.getActivitiesByIds(ids).then(res => {
+              if (!cancelled) setFavoriteActivities(res)
+            }).catch(err => {
+              console.error('Failed to load favorite activities:', err)
+              if (!cancelled) setFavoriteActivities([])
+            })
+          } else {
+            if (!cancelled) setFavoriteActivities([])
+          }
+          return
+        }
+      } catch (e) {
+        console.warn('Failed to load preferences from Supabase, fallback to localStorage', e)
       }
-      const ids = JSON.parse(saved) as string[]
-      if (Array.isArray(ids) && ids.length > 0) {
-        setLikedIds(ids)
-        ActivitiesService.getActivitiesByIds(ids).then(setFavoriteActivities).catch(err => {
-          console.error('Failed to load favorite activities:', err)
+      try {
+        const saved = localStorage.getItem('likedActivities')
+        const ids = saved ? JSON.parse(saved) as string[] : []
+        if (!cancelled) setLikedIds(Array.isArray(ids) ? ids : [])
+        if (Array.isArray(ids) && ids.length > 0) {
+          ActivitiesService.getActivitiesByIds(ids).then(res => {
+            if (!cancelled) setFavoriteActivities(res)
+          }).catch(err => {
+            console.error('Failed to load favorite activities:', err)
+            if (!cancelled) setFavoriteActivities([])
+          })
+        } else {
+          if (!cancelled) setFavoriteActivities([])
+        }
+      } catch (e) {
+        console.error('Error parsing likedActivities:', e)
+        if (!cancelled) {
           setFavoriteActivities([])
-        })
-      } else {
-        setFavoriteActivities([])
-        setLikedIds([])
+          setLikedIds([])
+        }
       }
-    } catch (e) {
-      console.error('Error parsing likedActivities:', e)
-      setFavoriteActivities([])
-      setLikedIds([])
     }
-  }, [])
+    loadFavorites()
+    return () => { cancelled = true }
+  }, [user?.id])
   const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([])
   const [bookingsLoading, setBookingsLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -296,7 +320,11 @@ export default function ProfilePage() {
     setLikedIds(prev => {
       const exists = prev.includes(activityId)
       const next = exists ? prev.filter(id => id !== activityId) : [...prev, activityId]
-      localStorage.setItem('likedActivities', JSON.stringify(next))
+      if (!user?.id) {
+        localStorage.setItem('likedActivities', JSON.stringify(next))
+      } else {
+        UserPreferencesService.setPreference(user.id, activityId, exists ? 'disliked' : 'liked').catch(() => {})
+      }
       if (exists) {
         // Remove from current favorites list
         setFavoriteActivities(curr => curr.filter(a => a.id !== activityId))

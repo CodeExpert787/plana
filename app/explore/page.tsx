@@ -115,17 +115,17 @@ export default function ExplorePage() {
     params.append("view", viewMode)
     return `/search?${params.toString()}`
   }
-  // Cargar actividades likeadas desde localStorage al iniciar
+  // Cargar actividades likeadas desde localStorage al iniciar (explore-specific key)
   useEffect(() => {
-    const savedLikes = localStorage.getItem("likedActivities")
+    const savedLikes = localStorage.getItem("exploreLikedActivities")
     if (savedLikes) {
       setLikedActivities(JSON.parse(savedLikes))
     }
   }, [])
 
-  // Guardar actividades likeadas en localStorage cuando cambian
+  // Guardar actividades likeadas en localStorage cuando cambian (explore-specific key)
   useEffect(() => {
-    localStorage.setItem("likedActivities", JSON.stringify(likedActivities))
+    localStorage.setItem("exploreLikedActivities", JSON.stringify(likedActivities))
   }, [likedActivities])
 
   // Función para manejar el like/unlike de una actividad
